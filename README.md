@@ -42,7 +42,12 @@ services:
 
 Then run:
 ```bash
-docker-compose up -d
+docker compose up -d
+```
+
+Besure to take a look at the logs when the server is starting up, and authenticate if it prompts you to.
+```bash
+docker compose logs -f hytale
 ```
 
 ### Using Pre-built Images (Docker CLI)
