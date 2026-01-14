@@ -1,5 +1,16 @@
 FROM eclipse-temurin:25-jre-alpine
 
+# Image metadata and credits
+LABEL org.opencontainers.image.title="Hytale Server"
+LABEL org.opencontainers.image.description="A Docker container for running Hytale game servers with automated authentication, server file management, and configuration"
+LABEL org.opencontainers.image.url="https://github.com/Madscientiste/hytale-docker"
+LABEL org.opencontainers.image.source="https://github.com/Madscientiste/hytale-docker"
+LABEL org.opencontainers.image.vendor="Madscientiste"
+LABEL org.opencontainers.image.authors="Madscientiste"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+LABEL maintainer="Madscientiste"
+LABEL repository="https://github.com/Madscientiste/hytale-docker"
+
 ENV JAVA_HOME=/opt/java/openjdk \
     PATH="/opt/java/openjdk/bin:${PATH}"
 

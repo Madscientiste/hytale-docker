@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+# Hytale Server Authorization CLI
+# Implements Device Code Flow (RFC 8628) for OAuth authentication
+#
+# Repository: https://github.com/Madscientiste/hytale-docker
+#
+# This script is part of the Hytale Server Docker container project.
+# It handles OAuth2 Device Code Flow authentication with the Hytale API.
+#############################################################################
+
 # Common utilities and logging functions for Hytale server scripts
 
 # Color codes
@@ -117,9 +126,6 @@ check_prerequisites() {
     fi
 }
 
-
-# Hytale Server Authorization CLI
-# Implements Device Code Flow (RFC 8628) for OAuth authentication
 
 # Version
 SCRIPT_VERSION="1.0.0"
