@@ -221,6 +221,7 @@ Images are built for both `linux/amd64` and `linux/arm64` platforms.
 
 Tested platforms:
 - Arch Linux
+- Ubuntu 24.04
 - Windows -> Not yet tested
 
 ## Misc
