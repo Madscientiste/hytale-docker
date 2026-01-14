@@ -1,0 +1,25 @@
+services:
+  hytale:
+    build: .
+    restart: unless-stopped
+    container_name: hytale
+    tty: true
+    stdin_open: true
+    environment:
+      - HOST_UID=${UID:-1000}
+      - HOST_GID=${GID:-1001}
+    volumes:
+      - "./data:/data"
+    ports:
+      - "5520:5520/udp" # Hytale UDP/QUIC
+  ht:
+    build: .
+    restart: unless-stopped
+    container_name: ht
+    environment:
+      - HOST_UID=${UID:-1000}
+      - HOST_GID=${GID:-1001}
+    volumes:
+      - "./hytale_data_test:/data"
+
+

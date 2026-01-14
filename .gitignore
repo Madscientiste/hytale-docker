@@ -1,0 +1,90 @@
+# Authentication and sensitive data
+**/auth.json
+**/auth.enc
+**/*.pem
+**/*.key
+**/*.crt
+
+# Runtime data directories
+/data/
+/data/**
+!/data/.gitkeep
+hytale_data_test/
+hytale_data_test/**
+
+# Server runtime files
+*.jar
+*.zip
+*.log
+*.log.lck
+*.bak
+
+# Temporary files
+**/.tmp-*/
+**/.tmp-*/
+**/*.tmp
+**/*.temp
+
+# Playground and test directories
+playground/
+playground/**
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Build artifacts
+target/
+build/
+dist/
+*.class
+*.o
+*.so
+*.dylib
+*.dll
+
+# Docker
+.dockerignore
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Cache directories
+.cache/
+*.cache
+
+# Node modules (if any)
+node_modules/
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
