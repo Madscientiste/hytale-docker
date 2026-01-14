@@ -6,13 +6,9 @@
 
 A Docker container for running Hytale game servers with automated authentication, server file management, and configuration.
 
-## Features
+> **Note:** This project is still a work in progress. I originally created this container for personal use on my NAS, so my friends and I could easily play together. While it works well for my needs, there are areas I plan to improve and additional features to add for a more robust, production-ready setup. I'm sharing it here in the hope that it helps others, and I'm open to feedback and contributions!
 
-- **Automated OAuth2 Authentication**: Device code flow authentication with automatic token refresh
-- **Automatic Server Downloads**: Downloads and updates server files from Hytale's CDN
-- **Configuration Management**: Server configuration via environment variables
-- **Secure Credential Handling**: Encrypted credential storage with automatic management
-- **Alpine-based**: Lightweight container based on Eclipse Temurin JRE
+I was able to point my domain's A record to my VPS and was able to connect to the Hytale server using my domain name, despite their warning about unsupported domains.
 
 ## Quick Start
 
