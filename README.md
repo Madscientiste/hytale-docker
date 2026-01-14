@@ -2,7 +2,7 @@
   <img src="https://hytale.com/static/images/logo.png" alt="Hytale Logo" width="300">
 </div>
 
-# Heetail - Hytale Server Container
+# Hytale Server Containerized
 
 A Docker container for running Hytale game servers with automated authentication, server file management, and configuration.
 
