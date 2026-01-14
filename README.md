@@ -6,9 +6,18 @@
 
 A Docker container for running Hytale game servers with automated authentication, server file management, and configuration.
 
-> **Note:** This project is still a work in progress. I originally created this container for personal use on my NAS, so my friends and I could easily play together. While it works well for my needs, there are areas I plan to improve and additional features to add for a more robust, production-ready setup. I'm sharing it here in the hope that it helps others, and I'm open to feedback and contributions!
+> [!NOTE] 
+> This project is still a work in progress. I originally created this container for personal use on my NAS, so my friends and I could easily play together. While it works well for my needs, there are areas I plan to improve and additional features to add for a more robust, production-ready setup. I'm sharing it here in the hope that it helps others, and I'm open to feedback and contributions!
+>
+> I was able to point my domain's A record to my VPS and was able to connect to the Hytale server using my domain name, despite their warning about unsupported domains.
+> 
+> This project should stay alive for awhile, i'll be maintaining it and adding features as i need them.
 
-I was able to point my domain's A record to my VPS and was able to connect to the Hytale server using my domain name, despite their warning about unsupported domains.
+> If you have any feature requests, please open an issue; I'm happy to consider them and discuss how we might implement your ideas.
+
+> [!NOTE]
+> Side note for Hytale developers:
+> If you need a developer to help ensure your tooling works smoothly, I'm available for hire :) !
 
 ## Quick Start
 
@@ -135,7 +144,8 @@ Tested platforms:
 - Arch Linux
 - Windows -> Not yet tested
 
-## License
+## Misc
 
-This project is provided as-is for educational and personal use.
+> [!WARNING]
+> This project is not affiliated with Hytale or its developers. It is a personal project created for educational and recreational purposes.
 
