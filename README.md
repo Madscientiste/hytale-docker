@@ -15,10 +15,6 @@ A Docker container for running Hytale game servers with automated authentication
 > 
 > If you have any feature requests, please open an issue; I'm happy to consider them and discuss how we might implement your ideas.
 
-> [!NOTE]
-> Personal side note:
-> If you need a developer to help ensure your tooling works smoothly, I'm available for hire :) !
-
 ## Quick Start
 
 ### Using Docker Compose (Recommended)
