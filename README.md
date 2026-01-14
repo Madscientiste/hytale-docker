@@ -26,7 +26,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   hytale:
-    image: ghcr.io/Madscientiste/hytale-server:latest
+    image: ghcr.io/madscientiste/hytale-server:latest
     # Or build locally: build: .
     restart: unless-stopped
     container_name: hytale
@@ -56,11 +56,11 @@ docker compose logs -f hytale
 Images are automatically built and published to GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/Madscientiste/hytale-server:latest
+docker pull ghcr.io/madscientiste/hytale-server:latest
 docker run -it --rm \
   -v $(pwd)/data:/data \
   -p 5520:5520/udp \
-  ghcr.io/Madscientiste/hytale-server:latest
+  ghcr.io/madscientiste/hytale-server:latest
 ```
 
 ### Building Locally
@@ -82,6 +82,89 @@ docker run -it --rm \
    - The container will prompt you to visit a URL and enter a device code
    - Complete authentication in your browser
    - Credentials will be saved to `/data/auth.json`
+
+## Example Logs
+
+When starting the container for the first time, you'll see output similar to this:
+
+```bash
+Attaching to hytale
+hytale  | [INFO] Modifying hytale user to match host UID=1000 GID=1001
+hytale  | [INFO] Creating hytale group with GID 1001
+hytale  | [INFO] Creating hytale user with UID 1000
+hytale  | [INFO] Fixing ownership of /data to 1000:1001
+hytale  | 
+hytale  | ==========================================
+hytale  |   Hytale Server Startup
+hytale  | ==========================================
+hytale  | 
+hytale  | Step 1: Authenticating with Hytale
+hytale  | Step 1: Requesting device code
+hytale  | 
+hytale  | ==========================================
+hytale  |   Hytale Server Authorization Required
+hytale  | ==========================================
+hytale  | 
+hytale  | [INFO] Please visit this URL in your browser:
+hytale  | 
+hytale  | [INFO] https://oauth.accounts.hytale.com/oauth2/device/verify?user_code=pNxEEsJv
+hytale  | 
+hytale  | [INFO] Or visit:
+hytale  | [INFO] https://oauth.accounts.hytale.com/oauth2/device/verify
+hytale  | 
+hytale  | [INFO] And enter this code:
+hytale  |   pNxEEsJv
+hytale  | 
+hytale  | [INFO] Waiting for authorization...
+hytale  | ....
+hytale  | Authorization successful!
+hytale  | Step 4: Fetching available profiles...
+hytale  | [INFO] Found profile: username (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+hytale  | Step 5: Creating game session...
+hytale  | Game session created successfully!
+hytale  | Step 6: Saving credentials to /data/auth.json...
+hytale  | 
+hytale  | 
+hytale  | ==========================================
+hytale  |   Authentication Complete!
+hytale  | ==========================================
+hytale  | 
+hytale  | [INFO] Credentials saved to: /data/auth.json
+hytale  | [INFO] Session expires at: 2026-01-14T20:11:32.020458214Z
+hytale  | 
+hytale  | [INFO] You can now start the Hytale server.
+hytale  | 
+hytale  | Step 2: Checking server files
+hytale  | 
+hytale  | ==========================================
+hytale  |   Downloading Hytale Server
+hytale  | ==========================================
+hytale  | 
+hytale  | [INFO] Version: LATEST
+hytale  | [INFO] Patchline: release
+hytale  | [INFO] Using credentials: /data/auth.json
+hytale  | Step 1: Getting version manifest for patchline: release
+hytale  | [SUCCESS] Got signed manifest URL
+hytale  | Step 2: Fetching manifest content...
+hytale  | [SUCCESS] Manifest retrieved
+hytale  | [INFO]   Version: 2026.01.13-50e69c385
+hytale  | [INFO]   Download path: builds/release/2026.01.13-50e69c385.zip
+hytale  | [INFO]   SHA256: bf32f635771ec383...
+hytale  | Step 3: Getting signed download URL...
+hytale  | [SUCCESS] Got signed download URL (expires in 6 hours)
+hytale  | Step 4: Downloading game file to temporary location...
+hytale  | [INFO] Output: /data/.tmp-download/game.zip
+hytale  | [INFO] This may take a while...
+```
+
+The container will:
+1. Set up the user and group permissions to match your host system
+2. Display the authentication URL and device code
+3. Wait for you to complete the OAuth flow in your browser
+4. Fetch your Hytale profile and create a game session
+5. Save credentials to `/data/auth.json` for future use
+6. Download the latest server files automatically
+7. Continue with server configuration and startup
 
 ## Configuration
 

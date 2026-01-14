@@ -1,6 +1,6 @@
 services:
   hytale:
-    image: ghcr.io/Madscientiste/hytale-server:latest
+    image: ghcr.io/madscientiste/hytale-server:latest
     # Or build locally: build: .
     restart: unless-stopped
     container_name: hytale
