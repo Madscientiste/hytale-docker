@@ -59,32 +59,20 @@ docker run -it --rm \
 
 ### Building Locally
 
-Create a `docker-compose.yml` file:
+1. **Build the container:**
+   ```bash
+   docker build -t hytale .
+   ```
 
-```yaml
-services:
-  hytale:
-    image: ghcr.io/Madscientiste/hytale:latest
-    # Or build locally: build: .
-    restart: unless-stopped
-    container_name: hytale
-    tty: true
-    stdin_open: true
-    environment:
-      - HOST_UID=${UID:-1000}
-      - HOST_GID=${GID:-1001}
-    volumes:
-      - "./data:/data"
-    ports:
-      - "5520:5520/udp" # Hytale UDP/QUIC
-```
+2. **Run the server:**
+   ```bash
+   docker run -it --rm \
+     -v $(pwd)/data:/data \
+     -p 5520:5520/udp \
+     hytale
+   ```
 
-Then run:
-```bash
-docker-compose up -d
-```
-
-3. **First-time authentication:**
+## First-time Authentication
    - The container will prompt you to visit a URL and enter a device code
    - Complete authentication in your browser
    - Credentials will be saved to `/data/auth.json`
