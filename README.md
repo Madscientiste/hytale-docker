@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="https://hytale.com//static/images/logo.png" alt="Hytale Logo" width="300">
+</div>
+
 # Heetail - Hytale Server Container
 
 A Docker container for running Hytale game servers with automated authentication, server file management, and configuration.
@@ -12,32 +16,73 @@ A Docker container for running Hytale game servers with automated authentication
 
 ## Quick Start
 
-### Using Pre-built Images
+### Using Docker Compose (Recommended)
+
+**This is the recommended way to set up and run the Hytale server.**
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  hytale:
+    image: ghcr.io/Madscientiste/hytale:latest
+    # Or build locally: build: .
+    restart: unless-stopped
+    container_name: hytale
+    tty: true
+    stdin_open: true
+    environment:
+      - HOST_UID=${UID:-1000}
+      - HOST_GID=${GID:-1001}
+    volumes:
+      - "./data:/data"
+    ports:
+      - "5520:5520/udp" # Hytale UDP/QUIC
+```
+
+Then run:
+```bash
+docker-compose up -d
+```
+
+### Using Pre-built Images (Docker CLI)
 
 Images are automatically built and published to GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/<your-username>/heetail:latest
+docker pull ghcr.io/Madscientiste/hytale:latest
 docker run -it --rm \
   -v $(pwd)/data:/data \
   -p 5520:5520/udp \
-  ghcr.io/<your-username>/heetail:latest
+  ghcr.io/Madscientiste/hytale:latest
 ```
 
 ### Building Locally
 
-1. **Build the container:**
-   ```bash
-   docker build -t heetail .
-   ```
+Create a `docker-compose.yml` file:
 
-2. **Run the server:**
-   ```bash
-   docker run -it --rm \
-     -v $(pwd)/data:/data \
-     -p 5520:5520/udp \
-     heetail
-   ```
+```yaml
+services:
+  hytale:
+    image: ghcr.io/Madscientiste/hytale:latest
+    # Or build locally: build: .
+    restart: unless-stopped
+    container_name: hytale
+    tty: true
+    stdin_open: true
+    environment:
+      - HOST_UID=${UID:-1000}
+      - HOST_GID=${GID:-1001}
+    volumes:
+      - "./data:/data"
+    ports:
+      - "5520:5520/udp" # Hytale UDP/QUIC
+```
+
+Then run:
+```bash
+docker-compose up -d
+```
 
 3. **First-time authentication:**
    - The container will prompt you to visit a URL and enter a device code
