@@ -12,7 +12,7 @@ A Docker container for running Hytale game servers with automated authentication
 > I was able to point my domain's A record to my VPS and was able to connect to the Hytale server using my domain name, despite their warning about unsupported domains.
 > 
 > This project should stay alive for awhile, i'll be maintaining it and adding features as i need them.
-
+> 
 > If you have any feature requests, please open an issue; I'm happy to consider them and discuss how we might implement your ideas.
 
 > [!NOTE]
