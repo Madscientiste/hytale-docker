@@ -7,8 +7,35 @@ services:
     tty: true
     stdin_open: true
     environment:
+      # Container & Permissions
       - HOST_UID=${UID:-1000}
       - HOST_GID=${GID:-1001}
+
+      # Logging
+      - LOG_LEVEL=INFO # ERROR, WARN, INFO, DEBUG
+
+      # Server Download
+      - VERSION=LATEST # Currently only LATEST is supported
+      - PATCHLINE=release # Patchline/branch (typically 'release' or 'pre-release')
+      - FORCE_DOWNLOAD=false # Force re-download if true
+
+      # Server Configuration
+      - SERVER_NAME=My Hytale Server # Server name displayed to players
+      - MOTD=Welcome to our Hytale server! # Message of the day
+      - MAX_PLAYERS=50 # Maximum number of players
+      - MAX_VIEW_RADIUS=32 # Maximum view radius (chunks)
+      - DEFAULT_WORLD=default # Default world name
+      - DEFAULT_GAME_MODE=Adventure # Adventure or Creative
+      - SERVER_PASSWORD= # Server password (empty for public)
+
+      # JVM & Server Startup
+      - INIT_MEMORY=8G # Initial Java heap size
+      - MAX_MEMORY=16G # Maximum Java heap size
+      - JVM_OPTS= # Additional JVM options
+      - JVM_XX_OPTS= # Additional JVM -XX: options
+      - BIND_ADDRESS= # IP address to bind to (empty = all interfaces)
+      - TRANSPORT_TYPE= # Transport type (e.g., 'quic')
+      - AUTH_MODE= # Authentication mode (e.g., 'online')
     volumes:
       - "./data:/data"
     ports:
