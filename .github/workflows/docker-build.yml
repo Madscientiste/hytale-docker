@@ -15,7 +15,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: hytale
+  IMAGE_NAME: hytale-server
 
 jobs:
   build:

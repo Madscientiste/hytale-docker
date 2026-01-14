@@ -25,7 +25,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   hytale:
-    image: ghcr.io/Madscientiste/hytale:latest
+    image: ghcr.io/Madscientiste/hytale-server:latest
     # Or build locally: build: .
     restart: unless-stopped
     container_name: hytale
@@ -50,18 +50,18 @@ docker-compose up -d
 Images are automatically built and published to GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/Madscientiste/hytale:latest
+docker pull ghcr.io/Madscientiste/hytale-server:latest
 docker run -it --rm \
   -v $(pwd)/data:/data \
   -p 5520:5520/udp \
-  ghcr.io/Madscientiste/hytale:latest
+  ghcr.io/Madscientiste/hytale-server:latest
 ```
 
 ### Building Locally
 
 1. **Build the container:**
    ```bash
-   docker build -t hytale .
+   docker build -t hytale-server .
    ```
 
 2. **Run the server:**
@@ -69,7 +69,7 @@ docker run -it --rm \
    docker run -it --rm \
      -v $(pwd)/data:/data \
      -p 5520:5520/udp \
-     hytale
+     hytale-server
    ```
 
 ## First-time Authentication
