@@ -36,7 +36,17 @@ services:
       - BIND_ADDRESS= # IP address to bind to (empty = all interfaces)
       - TRANSPORT_TYPE= # Transport type (e.g., 'quic')
       - AUTH_MODE= # Authentication mode (e.g., 'online')
+
+      # Backup Configuration
+      - ENABLE_BACKUPS=true # Enable/disable backups (default: true)
+      - BACKUP_DIR=/data/backups # Absolute path for backups (default: /data/backups)
+      - BACKUP_FREQUENCY=30 # Backup interval in minutes (default: 30)
+      - BACKUP_MAX_COUNT=5 # Maximum number of backups to keep (default: 5)
+      # Example: Use separate volume for backups
+      # - BACKUP_DIR=/backup
     volumes:
       - "./data:/data"
+      # Optional: Mount separate volume for backups
+      # - "./backups:/backup"
     ports:
       - "5520:5520/udp" # Hytale UDP/QUIC

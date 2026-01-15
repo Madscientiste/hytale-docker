@@ -9,6 +9,7 @@ This document describes all environment variables that can be used to configure 
 - [Server Download](#server-download)
 - [Server Configuration](#server-configuration)
 - [JVM & Server Startup](#jvm--server-startup)
+- [Backup Configuration](#backup-configuration)
 - [Authentication](#authentication)
 
 ---
@@ -321,6 +322,90 @@ AUTH_MODE="online"
 
 ---
 
+## Backup Configuration
+
+These variables control the Hytale server's automatic backup functionality. Backups are enabled by default.
+
+### `ENABLE_BACKUPS`
+
+**Type:** Boolean  
+**Default:** `true`  
+**Description:** Enable or disable automatic server backups.
+
+**Valid Values:**
+- `true` - Enable backups (default)
+- `false` - Disable backups
+
+**Example:**
+```bash
+ENABLE_BACKUPS=true
+```
+
+**Example (disable backups):**
+```bash
+ENABLE_BACKUPS=false
+```
+
+---
+
+### `BACKUP_DIR`
+
+**Type:** String (Absolute path)  
+**Default:** `/data/backups`  
+**Description:** Absolute directory path where backups are stored. Must be an absolute path starting with `/` (e.g., `/backup`, `/data/backups`). This allows mounting volumes at specific paths.
+
+**Requirements:**
+- Must be an absolute path (starting with `/`)
+- The directory will be created by the server if it doesn't exist
+
+**Example:**
+```bash
+BACKUP_DIR=/data/backups
+```
+
+**Example (using mounted volume):**
+```bash
+BACKUP_DIR=/backup
+```
+
+---
+
+### `BACKUP_FREQUENCY`
+
+**Type:** Integer  
+**Default:** `30`  
+**Description:** Backup interval in minutes. The server will create a backup at this interval.
+
+**Example:**
+```bash
+BACKUP_FREQUENCY=30
+```
+
+**Example (backup every hour):**
+```bash
+BACKUP_FREQUENCY=60
+```
+
+---
+
+### `BACKUP_MAX_COUNT`
+
+**Type:** Integer  
+**Default:** `5`  
+**Description:** Maximum number of backups to keep. When this limit is reached, the oldest backup will be deleted when a new backup is created.
+
+**Example:**
+```bash
+BACKUP_MAX_COUNT=5
+```
+
+**Example (keep 10 backups):**
+```bash
+BACKUP_MAX_COUNT=10
+```
+
+---
+
 ## Authentication
 
 > **Note:** Authentication is handled automatically via `hy-auth.sh` during container startup. Credentials are stored in `/data/auth.json`. These environment variables are **not currently used** - authentication tokens are read from the JSON file, not environment variables.
@@ -399,6 +484,12 @@ DEFAULT_GAME_MODE=Creative
 INIT_MEMORY=8G
 MAX_MEMORY=16G
 
+# Backup configuration
+ENABLE_BACKUPS=true
+BACKUP_DIR=/data/backups
+BACKUP_FREQUENCY=30
+BACKUP_MAX_COUNT=5
+
 # Logging
 LOG_LEVEL=INFO
 ```
@@ -419,8 +510,17 @@ docker run -e HOST_UID=1000 -e HOST_GID=1001 \
   -e SERVER_NAME="My Server" \
   -e MAX_PLAYERS=50 \
   -e INIT_MEMORY=8G -e MAX_MEMORY=16G \
+  -e BACKUP_DIR=/backup \
+  -e BACKUP_FREQUENCY=60 \
   -v ./data:/data \
+  -v ./backups:/backup \
   hytale-server
+```
+
+### Disable backups
+
+```bash
+ENABLE_BACKUPS=false
 ```
 
 ---

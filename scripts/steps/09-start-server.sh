@@ -59,18 +59,52 @@ fi
 log_info "Memory: ${INIT_MEMORY} / ${MAX_MEMORY}"
 log_debug "JVM Options: $JVM_OPTS_BASE"
 
+# Configure backup settings
+ENABLE_BACKUPS="${ENABLE_BACKUPS:-true}"
+BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
+BACKUP_FREQUENCY="${BACKUP_FREQUENCY:-30}"
+BACKUP_MAX_COUNT="${BACKUP_MAX_COUNT:-5}"
+
+# Validate BACKUP_DIR is absolute (must start with /) and build backup flags
+if [ "$ENABLE_BACKUPS" = "true" ]; then
+    case "$BACKUP_DIR" in
+        /*) ;;
+        *) error_exit "BACKUP_DIR must be an absolute path (starting with /), got: $BACKUP_DIR" ;;
+    esac
+    log_info "Backups enabled: dir=$BACKUP_DIR, frequency=${BACKUP_FREQUENCY}min, max=${BACKUP_MAX_COUNT}"
+else
+    log_info "Backups disabled"
+fi
+
 # Change to data directory
 cd "${HYTALE_DATA_DIR}"
 
 # Start server with authentication
 log_info "Starting Hytale server..."
-exec java $JVM_OPTS_BASE \
-    -jar HytaleServer.jar \
-    --assets Assets.zip \
-    --session-token "$SESSION_TOKEN" \
-    --identity-token "$IDENTITY_TOKEN" \
-    --owner-uuid "$OWNER_UUID" \
-    ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
-    ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
-    ${TRANSPORT_TYPE:+--transport "$TRANSPORT_TYPE"} \
-    ${AUTH_MODE:+--auth-mode "$AUTH_MODE"}
+if [ "$ENABLE_BACKUPS" = "true" ]; then
+    exec java $JVM_OPTS_BASE \
+        -jar HytaleServer.jar \
+        --assets Assets.zip \
+        --session-token "$SESSION_TOKEN" \
+        --identity-token "$IDENTITY_TOKEN" \
+        --owner-uuid "$OWNER_UUID" \
+        ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
+        ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
+        ${TRANSPORT_TYPE:+--transport "$TRANSPORT_TYPE"} \
+        ${AUTH_MODE:+--auth-mode "$AUTH_MODE"} \
+        --backup \
+        --backup-dir "$BACKUP_DIR" \
+        --backup-frequency "$BACKUP_FREQUENCY" \
+        --backup-max-count "$BACKUP_MAX_COUNT"
+else
+    exec java $JVM_OPTS_BASE \
+        -jar HytaleServer.jar \
+        --assets Assets.zip \
+        --session-token "$SESSION_TOKEN" \
+        --identity-token "$IDENTITY_TOKEN" \
+        --owner-uuid "$OWNER_UUID" \
+        ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
+        ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
+        ${TRANSPORT_TYPE:+--transport "$TRANSPORT_TYPE"} \
+        ${AUTH_MODE:+--auth-mode "$AUTH_MODE"}
+fi

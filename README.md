@@ -178,6 +178,10 @@ See [docs/env-variables.md](docs/env-variables.md) for all available environment
 - `MOTD`: Message of the day
 - `INIT_MEMORY`: Initial JVM heap size (default: `12G`)
 - `MAX_MEMORY`: Maximum JVM heap size (default: `12G`)
+- `ENABLE_BACKUPS`: Enable/disable automatic backups (default: `true`)
+- `BACKUP_DIR`: Backup directory path (default: `/data/backups`)
+- `BACKUP_FREQUENCY`: Backup interval in minutes (default: `30`)
+- `BACKUP_MAX_COUNT`: Maximum number of backups to keep (default: `5`)
 
 ## Project Structure
 
