@@ -21,11 +21,15 @@ log_step "2" "Checking server files"
 log_step "3" "Configuring server"
 "${SCRIPT_DIR}/02-configure-server.sh"
 
-# Step 4: Load authentication credentials
-log_step "4" "Loading authentication credentials"
+# Step 4: Setup RCON plugin
+log_step "4" "Setting up RCON plugin"
+"${SCRIPT_DIR}/04-setup-rcon.sh"
+
+# Step 5: Load authentication credentials
+log_step "5" "Loading authentication credentials"
 . "${SCRIPT_DIR}/03-load-auth.sh"
 
-# Step 5: Start server
-log_step "5" "Starting Hytale server"
+# Step 6: Start server
+log_step "6" "Starting Hytale server"
 cd "${HYTALE_DATA_DIR}"
 "${SCRIPT_DIR}/09-start-server.sh"

@@ -1,7 +1,8 @@
 services:
   hytale:
-    image: ghcr.io/madscientiste/hytale-server:latest
+    # image: ghcr.io/madscientiste/hytale-server:latest
     # Or build locally: build: .
+    build: .
     restart: unless-stopped
     container_name: hytale
     tty: true
@@ -15,7 +16,7 @@ services:
       - LOG_LEVEL=INFO # ERROR, WARN, INFO, DEBUG
 
       # Server Download
-      - VERSION=LATEST # Currently only LATEST is supported
+      - VERSION=LATEST # or specific version like 2026.01.17-4b0f30090; note ommiting the hash will get the last build of that version 
       - PATCHLINE=release # Patchline/branch (typically 'release' or 'pre-release')
       - FORCE_DOWNLOAD=false # Force re-download if true
 
@@ -44,9 +45,22 @@ services:
       - BACKUP_MAX_COUNT=5 # Maximum number of backups to keep (default: 5)
       # Example: Use separate volume for backups
       # - BACKUP_DIR=/backup
+
+      # RCON Configuration
+      - RCON_ENABLED=true # Enable/disable RCON plugin (default: true)
+      - RCON_VERSION=latest # RCON plugin version (default: latest, fetches latest release)
+      - RCON_HOST=0.0.0.0 # RCON bind address (0.0.0.0 = accessible from host, 127.0.0.1 = container only)
+      - RCON_PORT=25575 # RCON port (default: 25575)
+      - RCON_PASSWORD=verysecurepassword # RCON password (will be hashed automatically, leave empty for insecure mode)
+      - RCON_PASSWORD_HASH= # Pre-hashed password (format: base64salt:base64hash, overrides RCON_PASSWORD)
+      - RCON_MAX_CONNECTIONS=10 # Maximum concurrent RCON connections (default: 10)
+      - RCON_MAX_FRAME_SIZE=4096 # Maximum RCON frame size in bytes (default: 4096)
+      - RCON_READ_TIMEOUT_MS=30000 # RCON read timeout in milliseconds (default: 30000)
+      - RCON_CONNECTION_TIMEOUT_MS=5000 # RCON connection timeout in milliseconds (default: 5000)
     volumes:
       - "./data:/data"
       # Optional: Mount separate volume for backups
       # - "./backups:/backup"
     ports:
       - "5520:5520/udp" # Hytale UDP/QUIC
+      - "25575:25575/tcp" # RCON TCP

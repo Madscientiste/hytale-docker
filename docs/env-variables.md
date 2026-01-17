@@ -74,18 +74,34 @@ LOG_LEVEL=DEBUG
 
 ## Server Download
 
-> **Note:** The download step is currently commented out in the entrypoint. These variables will be used when the download step is enabled.
-
 ### `VERSION`
 
 **Type:** String  
 **Default:** `LATEST`  
-**Description:** Hytale server version to download. Currently only `LATEST` is supported.
+**Description:** Hytale server version to download. Can be `LATEST` (downloads the latest available version) or a specific version string with hash (e.g., `2026.01.17-4b0f30090`).
 
-**Example:**
+**Valid Values:**
+- `LATEST` - Downloads the latest version from the manifest (default)
+- `YYYY.MM.DD-hash` - Downloads a specific version (e.g., `2026.01.17-4b0f30090`)
+
+**Version Format:**
+- Full version format: `YYYY.MM.DD-{hash}` where:
+  - `YYYY.MM.DD` is the date (e.g., `2026.01.17`)
+  - `{hash}` is the version hash (e.g., `4b0f30090`)
+- Partial versions (date only, without hash) are not supported and will result in an error
+
+**Examples:**
 ```bash
+# Download latest version (default)
 VERSION=LATEST
+
+# Download specific version
+VERSION=2026.01.17-4b0f30090
 ```
+
+**Error Handling:**
+- If a partial version (date without hash) is specified, the container will exit with an error message
+- If a non-existent version is specified, the container will exit with a 404 error message
 
 ---
 
@@ -406,6 +422,196 @@ BACKUP_MAX_COUNT=10
 
 ---
 
+## RCON Configuration
+
+These variables control the RCON (Remote Console) plugin, which provides remote console access to your Hytale server using the standard RCON protocol.
+
+### `RCON_ENABLED`
+
+**Type:** Boolean  
+**Default:** `true`  
+**Description:** Enable or disable the RCON plugin. When disabled, the plugin will not be downloaded or configured.
+
+**Valid Values:**
+- `true` - Enable RCON plugin (default)
+- `false` - Disable RCON plugin
+
+**Example:**
+```bash
+RCON_ENABLED=true
+```
+
+---
+
+### `RCON_VERSION`
+
+**Type:** String  
+**Default:** `latest`  
+**Description:** Version of the RCON plugin to download. Set to `latest` to automatically fetch the latest release from GitHub, or specify a specific version (e.g., `1.0.0`).
+
+**Example:**
+```bash
+RCON_VERSION=latest
+```
+
+**Example (specific version):**
+```bash
+RCON_VERSION=1.0.0
+```
+
+---
+
+### `RCON_HOST`
+
+**Type:** String (IP address)  
+**Default:** `127.0.0.1`  
+**Description:** IP address to bind the RCON server to within the Docker container.
+
+**Docker Container Behavior:**
+- `127.0.0.1` (default): RCON is only accessible from within the container itself. **Not accessible from the host machine**, even if the port is mapped in `docker-compose.yml`.
+- `0.0.0.0`: RCON binds to all interfaces within the container, making it accessible from the host machine (when port `25575` is mapped) and from other containers on the same Docker network.
+
+**Security Considerations:**
+- To access RCON from your host machine, you must set `RCON_HOST=0.0.0.0` **and** have the port mapped in `docker-compose.yml` (which is already configured by default).
+- The port mapping in `docker-compose.yml` controls whether RCON is exposed to the host network.
+- Even with `0.0.0.0`, RCON is only accessible through the mapped port, providing some isolation.
+- Always use strong authentication (`RCON_PASSWORD` or `RCON_PASSWORD_HASH`) when exposing RCON to the network.
+- Consider using Docker network isolation or firewall rules for additional security.
+
+**Example (container-only access):**
+```bash
+RCON_HOST=127.0.0.1
+```
+
+**Example (accessible from host):**
+```bash
+RCON_HOST=0.0.0.0
+```
+
+---
+
+### `RCON_PORT`
+
+**Type:** Integer  
+**Default:** `25575`  
+**Description:** Port number for the RCON server to listen on.
+
+**Example:**
+```bash
+RCON_PORT=25575
+```
+
+---
+
+### `RCON_PASSWORD`
+
+**Type:** String  
+**Default:** Not set (empty)  
+**Description:** Plain text password for RCON authentication. The password will be automatically hashed using SHA-256 with salt during container startup. If both `RCON_PASSWORD` and `RCON_PASSWORD_HASH` are provided, `RCON_PASSWORD_HASH` takes precedence.
+
+**Security Note:** If neither `RCON_PASSWORD` nor `RCON_PASSWORD_HASH` is set, RCON will run in insecure mode (no authentication required). This is only recommended for local development/testing.
+
+**Example:**
+```bash
+RCON_PASSWORD=MySecurePassword123
+```
+
+**Security Note:** Consider using Docker secrets or environment files for sensitive passwords.
+
+---
+
+### `RCON_PASSWORD_HASH`
+
+**Type:** String  
+**Default:** Not set (empty)  
+**Description:** Pre-hashed password in the format `base64salt:base64hash`. This overrides `RCON_PASSWORD` if both are provided. You can generate a password hash using the plugin JAR or the Make command in the hytale-exp repository.
+
+**Format:** `base64salt:base64hash`
+
+**Example:**
+```bash
+RCON_PASSWORD_HASH=dGhpc2lzYXNsdA==:YW5kdGhpc2lzdGhlcGFzc3dvcmRoYXNo
+```
+
+---
+
+### `RCON_MAX_CONNECTIONS`
+
+**Type:** Integer  
+**Default:** `10`  
+**Description:** Maximum number of concurrent RCON connections allowed.
+
+**Example:**
+```bash
+RCON_MAX_CONNECTIONS=10
+```
+
+---
+
+### `RCON_MAX_FRAME_SIZE`
+
+**Type:** Integer  
+**Default:** `4096`  
+**Description:** Maximum RCON frame size in bytes.
+
+**Example:**
+```bash
+RCON_MAX_FRAME_SIZE=4096
+```
+
+---
+
+### `RCON_READ_TIMEOUT_MS`
+
+**Type:** Integer  
+**Default:** `30000`  
+**Description:** Read timeout for RCON connections in milliseconds.
+
+**Example:**
+```bash
+RCON_READ_TIMEOUT_MS=30000
+```
+
+---
+
+### `RCON_CONNECTION_TIMEOUT_MS`
+
+**Type:** Integer  
+**Default:** `5000`  
+**Description:** Connection timeout for RCON connections in milliseconds.
+
+**Example:**
+```bash
+RCON_CONNECTION_TIMEOUT_MS=5000
+```
+
+---
+
+### Automatic rcon-cli Configuration
+
+The container automatically creates a `.rcon-cli.yaml` configuration file in the home directory (`~/.rcon-cli.yaml`) during RCON setup. This allows you to use the `rcon-cli` command without specifying `--host`, `--port`, or `--password` arguments.
+
+**Configuration file location:** `~/.rcon-cli.yaml`
+
+**Contents:**
+- `host`: Set from `RCON_HOST` environment variable
+- `port`: Set from `RCON_PORT` environment variable
+- `password`: Set from `RCON_PASSWORD` environment variable (only if `RCON_PASSWORD` is provided)
+
+**Usage:**
+```bash
+# If RCON_PASSWORD is set, you can use rcon-cli directly:
+docker compose exec hytale rcon-cli list
+docker compose exec hytale rcon-cli "say Hello!"
+
+# If RCON_PASSWORD is not set, provide password via flag:
+docker compose exec hytale rcon-cli --password MyPassword list
+```
+
+**Note:** The configuration file is created with permissions `600` (read/write for owner only) for security.
+
+---
+
 ## Authentication
 
 > **Note:** Authentication is handled automatically via `hy-auth.sh` during container startup. Credentials are stored in `/data/auth.json`. These environment variables are **not currently used** - authentication tokens are read from the JSON file, not environment variables.
@@ -530,7 +736,8 @@ ENABLE_BACKUPS=false
 - All environment variables are optional unless otherwise specified
 - Default values are applied when variables are not set
 - **Container permissions** (`HOST_UID`/`HOST_GID`) are applied at container startup via the entrypoint wrapper
-- **Server download** and **configuration** steps are currently commented out in the entrypoint - variables are documented for when these features are enabled
+- **Server download** is handled by `hy-downloader.sh` utility script
+- **Configuration** step is currently commented out in the entrypoint - variables are documented for when this feature is enabled
 - **Authentication** is handled automatically via `hy-auth.sh` - credentials are stored in `/data/auth.json`, not environment variables
 - **JVM settings** and **server startup options** are applied when the server starts
 
