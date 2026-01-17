@@ -15,7 +15,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: Madscientiste/hytale-server
+  IMAGE_NAME: Madscientiste/hytale-docker
 
 jobs:
   build:
