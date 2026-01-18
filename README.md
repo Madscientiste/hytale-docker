@@ -78,7 +78,9 @@ docker compose logs -f  # Watch for authentication prompt on first run
 
 ### Reference
 - **[Hytale API](docs/misc/hytale-api.md)** - API endpoints documentation
-- **[hy-auth CLI](docs/misc/hy-auth.md)** - Authentication utility script
+- **[hy-auth CLI](docs/misc/hy-auth.md)** - OAuth2 authentication utility
+- **[hy-downloader CLI](docs/misc/hy-downloader.md)** - Server file download utility
+- **gen-psswd** - RCON password hash generator (see [RCON Setup](docs/rcon.md))
 
 ## Project Structure
 
@@ -94,8 +96,10 @@ hytale-docker/
 │   │   ├── 03-load-auth.sh
 │   │   ├── 04-setup-rcon.sh
 │   │   └── 09-start-server.sh
-│   └── tools/
-│       └── hy-auth.sh      # OAuth2 authentication tool
+│   └── tools/              # Utility scripts
+│       ├── hy-auth.sh      # OAuth2 authentication tool
+│       ├── hy-downloader.sh # Server file downloader
+│       └── gen-psswd.sh    # RCON password hash generator
 └── docs/                   # Documentation
 ```
 
