@@ -21,7 +21,7 @@ These variables control the container user/group permissions to match your host 
 ### `HOST_UID` / `HOST_GID`
 
 **Type:** Integer  
-**Default:** `HOST_UID=1000`, `HOST_GID=1001`  
+**Default:** `HOST_UID=1000`, `HOST_GID=1000` (when not set, container uses default `hytale` user with UID/GID 1000)  
 **Description:** User ID (UID) and Group ID (GID) for the `hytale` user/group inside the container. Should match your host user's UID/GID to avoid permission issues.
 
 **How to set:**
@@ -32,19 +32,19 @@ These variables control the container user/group permissions to match your host 
 ```yaml
 environment:
   - HOST_UID=${UID:-1000}
-  - HOST_GID=${GID:-1001}
+  - HOST_GID=${GID:-1001}  # Note: 1001 is just an example - use your actual host GID
 ```
 
 **Example (command line):**
 ```bash
 export UID=$(id -u)
 export GID=$(id -g)
-docker-compose up
+docker compose up
 ```
 
 **Example (direct):**
 ```bash
-docker run -e HOST_UID=1000 -e HOST_GID=1001 ...
+docker run -e HOST_UID=1000 -e HOST_GID=1000 ...
 ```
 
 **Note:** The container runs as root initially to modify the user/group at runtime, then drops privileges to the `hytale` user before starting the server.
@@ -137,9 +137,7 @@ FORCE_DOWNLOAD=true
 
 ## Server Configuration
 
-> **Note:** The configuration step is currently commented out in the entrypoint. These variables will be used when the configuration step is enabled.
-
-These variables configure the Hytale server's `config.json` file. All settings are optional and will only be applied if the variable is set.
+These variables configure the Hytale server's `config.json` file. All settings are optional and will only be applied if the variable is set. The configuration step runs automatically during container startup (step 3 of the entrypoint).
 
 ### `SERVER_NAME`
 
@@ -472,7 +470,7 @@ RCON_VERSION=1.0.0
 - `0.0.0.0`: RCON binds to all interfaces within the container, making it accessible from the host machine (when port `25575` is mapped) and from other containers on the same Docker network.
 
 **Security Considerations:**
-- To access RCON from your host machine, you must set `RCON_HOST=0.0.0.0` **and** have the port mapped in `docker-compose.yml` (which is already configured by default).
+- To access RCON from your host machine, you must set `RCON_HOST=0.0.0.0` **and** have the port mapped in `docker-compose.yml`.
 - The port mapping in `docker-compose.yml` controls whether RCON is exposed to the host network.
 - Even with `0.0.0.0`, RCON is only accessible through the mapped port, providing some isolation.
 - Always use strong authentication (`RCON_PASSWORD` or `RCON_PASSWORD_HASH`) when exposing RCON to the network.
@@ -603,9 +601,6 @@ The container automatically creates a `.rcon-cli.yaml` configuration file in the
 # If RCON_PASSWORD is set, you can use rcon-cli directly:
 docker compose exec hytale rcon-cli list
 docker compose exec hytale rcon-cli "say Hello!"
-
-# If RCON_PASSWORD is not set, provide password via flag:
-docker compose exec hytale rcon-cli --password MyPassword list
 ```
 
 **Note:** The configuration file is created with permissions `600` (read/write for owner only) for security.
@@ -737,7 +732,7 @@ ENABLE_BACKUPS=false
 - Default values are applied when variables are not set
 - **Container permissions** (`HOST_UID`/`HOST_GID`) are applied at container startup via the entrypoint wrapper
 - **Server download** is handled by `hy-downloader.sh` utility script
-- **Configuration** step is currently commented out in the entrypoint - variables are documented for when this feature is enabled
+- **Configuration** step runs automatically during container startup (step 3) and updates `config.json` based on environment variables
 - **Authentication** is handled automatically via `hy-auth.sh` - credentials are stored in `/data/auth.json`, not environment variables
 - **JVM settings** and **server startup options** are applied when the server starts
 

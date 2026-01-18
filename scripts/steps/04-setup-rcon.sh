@@ -131,6 +131,40 @@ else
     fi
 fi
 
+# Create symlink to RCON JAR in /data/.bin for easy access by utility scripts
+log_step "3" "Creating RCON JAR symlink"
+RCON_BIN_DIR="${HYTALE_DATA_DIR}/.bin"
+RCON_JAR_SYMLINK="${RCON_BIN_DIR}/rcon.jar"
+if [ -f "$PLUGIN_PATH" ]; then
+    # Create .bin directory if it doesn't exist
+    if [ ! -d "$RCON_BIN_DIR" ]; then
+        mkdir -p "$RCON_BIN_DIR" || error_exit "Failed to create bin directory: $RCON_BIN_DIR"
+        log_debug "Created bin directory: $RCON_BIN_DIR"
+    fi
+    
+    # Remove existing symlink if it exists and points to a different file
+    if [ -L "$RCON_JAR_SYMLINK" ]; then
+        CURRENT_TARGET=$(readlink -f "$RCON_JAR_SYMLINK" 2>/dev/null || echo "")
+        if [ "$CURRENT_TARGET" != "$PLUGIN_PATH" ]; then
+            log_debug "Removing existing symlink pointing to different JAR"
+            rm -f "$RCON_JAR_SYMLINK"
+        fi
+    fi
+    
+    # Create symlink if it doesn't exist
+    if [ ! -e "$RCON_JAR_SYMLINK" ]; then
+        if ln -s "$PLUGIN_PATH" "$RCON_JAR_SYMLINK"; then
+            log_success "RCON JAR symlink created: $RCON_JAR_SYMLINK -> $PLUGIN_PATH"
+        else
+            error_exit "Failed to create RCON JAR symlink"
+        fi
+    else
+        log_debug "RCON JAR symlink already exists: $RCON_JAR_SYMLINK"
+    fi
+else
+    log_warn "RCON plugin JAR not found, cannot create symlink"
+fi
+
 # 
 # FIXME: This is a workaround. Ideally, the mod itself should write the password hash into the config
 # so we don't have to generate and patch it here.
@@ -160,7 +194,7 @@ elif [ -n "$RCON_PASSWORD" ]; then
         log_debug "Hash: ${PASSWORD_HASH:0:30}..."
     else
         # Plaintext password provided - need to hash it
-        log_step "3" "Generating password hash from plaintext"
+        log_step "4" "Generating password hash from plaintext"
         PLAINTEXT_PASSWORD="$RCON_PASSWORD"
         
         # Verify plugin JAR exists before attempting to use it
@@ -209,7 +243,7 @@ else
 fi
 
 # Create or update RCON configuration file
-log_step "4" "Configuring RCON plugin"
+log_step "5" "Configuring RCON plugin"
 
 # Build RCON configuration JSON
 RCON_CONFIG_JSON="{}"
@@ -262,7 +296,7 @@ else
 fi
 
 # Create rcon-cli configuration file for easier command execution
-log_step "5" "Creating rcon-cli configuration"
+log_step "6" "Creating rcon-cli configuration"
 RCON_CLI_HOME="${HOME:-/home/hytale}"
 RCON_CLI_CONFIG="${RCON_CLI_HOME}/.rcon-cli.yaml"
 

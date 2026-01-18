@@ -46,7 +46,8 @@ RUN addgroup -g 1000 hytale && \
 COPY scripts/steps/* /init-container/
 COPY scripts/tools/* /usr/local/bin/
 RUN chmod +x /init-container/* && \
-    chmod +x /usr/local/bin/*
+    chmod +x /usr/local/bin/* && \
+    ln -sf /usr/local/bin/gen-psswd.sh /usr/local/bin/gen-psswd
 
 VOLUME ["/data"]
 WORKDIR /data
