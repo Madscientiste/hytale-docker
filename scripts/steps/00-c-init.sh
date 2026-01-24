@@ -92,6 +92,28 @@ if [ -d /data ]; then
     chown -R "${HOST_UID}:${HOST_GID}" /data || log_warn "Failed to change ownership of /data (may already be correct)"
 fi
 
+log_info "Setting up machine ID"
+MACHINE_ID=${MACHINE_ID:-$(uuidgen)}
+echo "${MACHINE_ID}" > /data/machine-id
+ln -sf /data/machine-id /etc/machine-id
+log_info "Machine ID set to ${MACHINE_ID}"
+
+# Create DMI workaround for hardware UUID (fixes HardwareUtil error in Docker)
+# The Hytale server tries to read /sys/class/dmi/id/product_uuid which may not exist in containers
+# Using tmpfs mount (configured in docker-compose.yml) to make this directory writable
+log_info "Setting up DMI hardware UUID workaround"
+if [ ! -d /sys/class/dmi/id ]; then
+    mkdir -p /sys/class/dmi/id 2>/dev/null || log_warn "Could not create /sys/class/dmi/id"
+fi
+
+# Create product_uuid file using machine-id with readable permissions
+# Format machine-id as UUID (add dashes if needed)
+UUID_FORMAT=$(echo "${MACHINE_ID}" | sed 's/\([0-9a-f]\{8\}\)\([0-9a-f]\{4\}\)\([0-9a-f]\{4\}\)\([0-9a-f]\{4\}\)\([0-9a-f]\{12\}\)/\1-\2-\3-\4-\5/')
+echo "${UUID_FORMAT}" > /sys/class/dmi/id/product_uuid 2>/dev/null && \
+    chmod 644 /sys/class/dmi/id/product_uuid 2>/dev/null && \
+    log_info "DMI hardware UUID workaround configured: ${UUID_FORMAT}" || \
+    log_warn "Could not write product_uuid to /sys/class/dmi/id (tmpfs mount may be required)"
+
 # Switch to hytale user and run the actual entrypoint
 switch_user_exec hytale "$@"
 

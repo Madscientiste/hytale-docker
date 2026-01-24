@@ -31,6 +31,7 @@ RUN apk add --no-cache \
     su-exec \
     libgcc \
     libstdc++ \
+    util-linux \
     gcompat
 
 # Copy rcon-cli from build stage

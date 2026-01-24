@@ -18,6 +18,7 @@ A Docker container for running Hytale game servers with automated authentication
 
 - **Automated OAuth2 authentication** with token refresh
 - **Auto-downloads server files** from Hytale's CDN
+- **Smart update checking** with cooldown protection
 - **Built-in RCON support** for remote server management
 - **Automatic backups** with configurable retention
 - **Multi-platform images** (linux/amd64, linux/arm64)
@@ -65,11 +66,50 @@ docker compose logs -f  # Watch for authentication prompt on first run
 
 **Configuration:** See [Environment Variables](docs/env-variables.md) for all available options.
 
+### Updating Your Server
+
+The container includes smart update checking to keep your server current:
+
+**Automatic Updates (Recommended):**
+```bash
+docker restart hytale-server  # Checks for updates and auto-downloads if available
+```
+
+**Manual Update Options:**
+```bash
+# Force immediate update check (bypasses cooldown)
+FORCE_UPDATE_CHECK=true docker restart hytale-server
+
+# Force re-download even if up-to-date
+FORCE_DOWNLOAD=true docker restart hytale-server
+
+# Pin to specific version (disables update checking)
+VERSION=2026.01.17-4b0f30090 docker restart hytale-server
+```
+
+**Update Behavior:**
+- ✅ **Smart checking**: Only checks for updates when `VERSION=LATEST`
+- ✅ **Cooldown protection**: Respects 1-hour cooldown to avoid API spam
+- ✅ **Version detection**: Compares installed version with latest available
+- ✅ **Automatic download**: Downloads new version automatically when found
+- ✅ **Safe updates**: Only updates during container startup (never while server is running)
+
+**Files Created:**
+- `/data/.last-update-check` - Timestamp file for cooldown management
+- `/data/HytaleServer.jar` - Server JAR (updated when new version available)
+- `/data/Assets.zip` - Game assets (updated when new version available)
+
+**Environment Variables:**
+- `FORCE_UPDATE_CHECK=true` - Force immediate update check
+- `VERSION=LATEST` - Enable automatic update checking (default)
+- `VERSION=<specific>` - Pin to specific version, disable update checking
+
 ## Documentation
 
 ### Getting Started
 - **[Installation Guide](docs/installation.md)** - Docker Compose, CLI, building from source
 - **[Authentication Guide](docs/authentication.md)** - First-time OAuth setup and example logs
+- **[Update Management](docs/update-management.md)** - Automatic update checking and version control
 
 ### Configuration
 - **[Environment Variables](docs/env-variables.md)** - Complete configuration reference
@@ -77,6 +117,7 @@ docker compose logs -f  # Watch for authentication prompt on first run
 - **[RCON Setup](docs/rcon.md)** - Remote console configuration and security
 
 ### Reference
+- **[Update Management](docs/update-management.md)** - Automatic update checking and version control
 - **[Hytale API](docs/misc/hytale-api.md)** - API endpoints documentation
 - **[hy-auth CLI](docs/misc/hy-auth.md)** - OAuth2 authentication utility
 - **[hy-downloader CLI](docs/misc/hy-downloader.md)** - Server file download utility

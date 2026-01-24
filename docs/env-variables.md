@@ -10,6 +10,7 @@ This document describes all environment variables that can be used to configure 
 - [Server Configuration](#server-configuration)
 - [JVM & Server Startup](#jvm--server-startup)
 - [Backup Configuration](#backup-configuration)
+- [RCON Configuration](#rcon-configuration)
 - [Authentication](#authentication)
 
 ---
@@ -132,6 +133,35 @@ PATCHLINE=release
 ```bash
 FORCE_DOWNLOAD=true
 ```
+
+---
+
+### `FORCE_UPDATE_CHECK`
+
+**Type:** Boolean  
+**Default:** `false`  
+**Description:** Force update checking regardless of cooldown period. Only applies when `VERSION=LATEST`.
+
+**Valid Values:**
+- `true` - Force update check (bypasses 1-hour cooldown)
+- `false` - Respect 1-hour cooldown between update checks (default)
+
+**Usage:**
+- Useful when you want to immediately check for updates without waiting for cooldown
+- Only affects update checking when `VERSION=LATEST`
+- Has no effect when using specific versions
+
+**Example:**
+```bash
+# Force immediate update check
+FORCE_UPDATE_CHECK=true docker restart hytale-server
+
+# Or in docker-compose.yml:
+environment:
+  - FORCE_UPDATE_CHECK=true
+```
+
+**Note:** This only forces the **check** for updates. If no new version is available, no download will occur.
 
 ---
 

@@ -136,6 +136,7 @@ DEVICE_AUTH_URL="https://oauth.accounts.hytale.com/oauth2/device/auth"
 TOKEN_URL="https://oauth.accounts.hytale.com/oauth2/token"
 PROFILES_URL="https://account-data.hytale.com/my-account/get-profiles"
 SESSION_URL="https://sessions.hytale.com/game-session/new"
+USER_AGENT="HytaleServer/unknown"
 
 # Default values
 AUTH_FILE=""
@@ -448,6 +449,7 @@ try_refresh_tokens() {
     local token_response
     token_response=$(curl -s -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
+        -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
         -d "grant_type=refresh_token" \
         -d "refresh_token=$refresh_token") || return 1
@@ -471,13 +473,13 @@ try_refresh_tokens() {
     # Get profiles with new access token
     local profiles_response
     profiles_response=$(curl -s -X GET "$PROFILES_URL" \
-        -H "Authorization: Bearer $access_token") || return 1
+        -H "Authorization: Bearer $access_token" \
+        -H "User-Agent: $USER_AGENT") || return 1
     
     if echo "$profiles_response" | grep -q "\"error\""; then
         return 1
     fi
     
-    local owner_uuid=$(json_get "owner" "$profiles_response")
     local profile_uuid
     local profile_username
     
@@ -498,6 +500,7 @@ try_refresh_tokens() {
     session_response=$(curl -s -X POST "$SESSION_URL" \
         -H "Authorization: Bearer $access_token" \
         -H "Content-Type: application/json" \
+        -H "User-Agent: $USER_AGENT" \
         -d "{\"uuid\": \"$profile_uuid\"}") || return 1
     
     if echo "$session_response" | grep -q "\"error\""; then
@@ -533,7 +536,7 @@ try_refresh_tokens() {
             --arg refresh_token "$new_refresh_token" \
             --arg session_token "$session_token" \
             --arg identity_token "$identity_token" \
-            --arg owner_uuid "$owner_uuid" \
+            --arg owner_uuid "$profile_uuid" \
             --arg owner_name "$profile_username" \
             --arg expires_at "$expires_at" \
             '{
@@ -552,7 +555,7 @@ try_refresh_tokens() {
   "refresh_token": "$new_refresh_token",
   "session_token": "$session_token",
   "identity_token": "$identity_token",
-  "owner_uuid": "$owner_uuid",
+  "owner_uuid": "$profile_uuid",
   "owner_name": "$profile_username",
   "expires_at": "$expires_at"
 }
@@ -602,6 +605,7 @@ refresh_tokens() {
     local token_response
     token_response=$(curl -s -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
+        -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
         -d "grant_type=refresh_token" \
         -d "refresh_token=$refresh_token") || error_exit "Failed to refresh token"
@@ -629,14 +633,14 @@ refresh_tokens() {
     # Get profiles with new access token
     local profiles_response
     profiles_response=$(curl -s -X GET "$PROFILES_URL" \
-        -H "Authorization: Bearer $access_token") || error_exit "Failed to fetch profiles"
+        -H "Authorization: Bearer $access_token" \
+        -H "User-Agent: $USER_AGENT") || error_exit "Failed to fetch profiles"
     
     if echo "$profiles_response" | grep -q "\"error\""; then
         local error_msg=$(json_get "error" "$profiles_response")
         error_exit "Failed to get profiles: $error_msg"
     fi
     
-    local owner_uuid=$(json_get "owner" "$profiles_response")
     local profile_uuid
     local profile_username
     
@@ -659,6 +663,7 @@ refresh_tokens() {
     session_response=$(curl -s -X POST "$SESSION_URL" \
         -H "Authorization: Bearer $access_token" \
         -H "Content-Type: application/json" \
+        -H "User-Agent: $USER_AGENT" \
         -d "{\"uuid\": \"$profile_uuid\"}") || error_exit "Failed to create game session"
     
     if echo "$session_response" | grep -q "\"error\""; then
@@ -697,7 +702,7 @@ refresh_tokens() {
             --arg refresh_token "$new_refresh_token" \
             --arg session_token "$session_token" \
             --arg identity_token "$identity_token" \
-            --arg owner_uuid "$owner_uuid" \
+            --arg owner_uuid "$profile_uuid" \
             --arg owner_name "$profile_username" \
             --arg expires_at "$expires_at" \
             '{
@@ -716,7 +721,7 @@ refresh_tokens() {
   "refresh_token": "$new_refresh_token",
   "session_token": "$session_token",
   "identity_token": "$identity_token",
-  "owner_uuid": "$owner_uuid",
+  "owner_uuid": "$profile_uuid",
   "owner_name": "$profile_username",
   "expires_at": "$expires_at"
 }
@@ -791,6 +796,7 @@ fi
 log_step "1" "Requesting device code"
 DEVICE_RESPONSE=$(curl -s -X POST "$DEVICE_AUTH_URL" \
     -H "Content-Type: application/x-www-form-urlencoded" \
+    -H "User-Agent: $USER_AGENT" \
     -d "client_id=$CLIENT_ID" \
     -d "scope=openid offline auth:server") || error_exit "Failed to request device code"
 
@@ -842,6 +848,7 @@ while [ $POLL_COUNT -lt $MAX_POLLS ]; do
     
     TOKEN_RESPONSE=$(curl -s -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
+        -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
         -d "grant_type=urn:ietf:params:oauth:grant-type:device_code" \
         -d "device_code=$DEVICE_CODE") || {
@@ -889,16 +896,15 @@ fi
 # Step 4: Get Available Profiles
 log_step "4" "Fetching available profiles..."
 PROFILES_RESPONSE=$(curl -s -X GET "$PROFILES_URL" \
-    -H "Authorization: Bearer $ACCESS_TOKEN") || error_exit "Failed to fetch profiles"
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -H "User-Agent: $USER_AGENT") || error_exit "Failed to fetch profiles"
 
 if echo "$PROFILES_RESPONSE" | grep -q "\"error\""; then
     ERROR_MSG=$(json_get "error" "$PROFILES_RESPONSE")
     error_exit "Failed to get profiles: $ERROR_MSG"
 fi
 
-# Extract owner UUID and profiles
-OWNER_UUID=$(json_get "owner" "$PROFILES_RESPONSE")
-
+# Extract profiles (use profile UUID instead of owner UUID to match tokens)
 # Get first profile (we'll use the first one available)
 if [ "$USE_JQ" = true ]; then
     PROFILE_UUID=$(echo "$PROFILES_RESPONSE" | jq -r '.profiles[0].uuid // empty')
@@ -920,6 +926,7 @@ log_step "5" "Creating game session..."
 SESSION_RESPONSE=$(curl -s -X POST "$SESSION_URL" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
+    -H "User-Agent: $USER_AGENT" \
     -d "{\"uuid\": \"$PROFILE_UUID\"}") || error_exit "Failed to create game session"
 
 if echo "$SESSION_RESPONSE" | grep -q "\"error\""; then
@@ -957,13 +964,14 @@ if [ -f "$AUTH_FILE" ] && [ ! -w "$AUTH_FILE" ]; then
 fi
 
 # Create JSON file
+# Use PROFILE_UUID as owner_uuid to match the UUID in the tokens
 if [ "$USE_JQ" = true ]; then
     jq -n \
         --arg access_token "$ACCESS_TOKEN" \
         --arg refresh_token "$REFRESH_TOKEN" \
         --arg session_token "$SESSION_TOKEN" \
         --arg identity_token "$IDENTITY_TOKEN" \
-        --arg owner_uuid "$OWNER_UUID" \
+        --arg owner_uuid "$PROFILE_UUID" \
         --arg owner_name "$PROFILE_USERNAME" \
         --arg expires_at "$EXPIRES_AT" \
         '{
@@ -977,13 +985,14 @@ if [ "$USE_JQ" = true ]; then
         }' > "$AUTH_FILE"
 else
     # Manual JSON construction (fallback)
+    # Use PROFILE_UUID as owner_uuid to match the UUID in the tokens
     cat > "$AUTH_FILE" <<EOF
 {
   "access_token": "$ACCESS_TOKEN",
   "refresh_token": "$REFRESH_TOKEN",
   "session_token": "$SESSION_TOKEN",
   "identity_token": "$IDENTITY_TOKEN",
-  "owner_uuid": "$OWNER_UUID",
+  "owner_uuid": "$PROFILE_UUID",
   "owner_name": "$PROFILE_USERNAME",
   "expires_at": "$EXPIRES_AT"
 }

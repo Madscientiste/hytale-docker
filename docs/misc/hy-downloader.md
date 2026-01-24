@@ -63,6 +63,18 @@ hy-downloader [OPTIONS] --auth-file PATH --output-dir PATH
   - Instead of version-tagged names (`hs-VERSION.jar`, `ha-VERSION.zip`)
   - Useful for scripts that expect standard filenames
 
+- `--dry-run`
+  - Only check version information without downloading
+  - Outputs latest version information and exits
+  - Used by container update checking mechanism
+  - Format:
+    ```
+    Latest version: YYYY.MM.DD-hash
+    Download path: builds/release/YYYY.MM.DD-hash.zip
+    SHA256: checksum
+    Patchline: patchline_name
+    ```
+
 ### Logging Control
 
 - `-v`, `--verbose`
@@ -217,6 +229,9 @@ hy-downloader -a ./auth.json -o ./server -v
 # Quiet mode (errors only)
 hy-downloader -a ./auth.json -o ./server --quiet
 hy-downloader -a ./auth.json -o ./server -q
+
+# Dry run - check version only
+hy-downloader -a ./auth.json -o ./tmp --dry-run
 ```
 
 ### Combined Options

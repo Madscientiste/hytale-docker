@@ -61,6 +61,8 @@ services:
       - "./data:/data"
       # Optional: Mount separate volume for backups
       # - "./backups:/backup"
+    tmpfs:
+      - /sys/class/dmi/id:rw,noexec,nosuid,size=1m
     ports:
       - "5520:5520/udp" # Hytale UDP/QUIC
       - "25575:25575/tcp" # RCON TCP
