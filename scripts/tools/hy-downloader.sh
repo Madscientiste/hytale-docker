@@ -143,6 +143,7 @@ FORCE_DOWNLOAD=false
 VERBOSE=false
 QUIET=false
 SIMPLE_NAMES=false
+DRY_RUN=false
 
 # Show help message
 show_help() {
@@ -199,6 +200,10 @@ OPTIONAL OPTIONS:
         Save files with simple names (HytaleServer.jar, Assets.zip)
         instead of version-tagged names (hs-VERSION.jar, ha-VERSION.zip).
 
+    --dry-run
+        Only check version information without downloading.
+        Outputs latest version information and exits.
+
 EXAMPLES:
     # Download latest server files
     hy-downloader --auth-file ./auth.json --output-dir ./server
@@ -214,6 +219,9 @@ EXAMPLES:
 
     # Force re-download
     hy-downloader -a ./auth.json -o ./server --force
+
+    # Dry run - check version only
+    hy-downloader -a ./auth.json -o ./tmp --dry-run
 
     # Verbose output
     hy-downloader -a ./auth.json -o ./server --verbose
@@ -321,6 +329,10 @@ parse_args() {
                 ;;
             --simple-names)
                 SIMPLE_NAMES=true
+                shift
+                ;;
+            --dry-run)
+                DRY_RUN=true
                 shift
                 ;;
             --*)
@@ -588,6 +600,17 @@ if [ "$VERSION" = "LATEST" ]; then
     if [ -n "$EXPECTED_SHA256" ]; then
         log_info "  SHA256: ${EXPECTED_SHA256:0:16}..."
     fi
+    
+    # If dry-run mode, output version info and exit
+    if [ "$DRY_RUN" = true ]; then
+        echo "Latest version: $ACTUAL_VERSION"
+        echo "Download path: $DOWNLOAD_PATH"
+        if [ -n "$EXPECTED_SHA256" ]; then
+            echo "SHA256: $EXPECTED_SHA256"
+        fi
+        echo "Patchline: $PATCHLINE"
+        exit 0
+    fi
 else
     # Use specific version - construct path directly
     ACTUAL_VERSION="$VERSION"
@@ -596,6 +619,15 @@ else
     log_info "  Constructed download path: $DOWNLOAD_PATH"
     # Note: SHA256 not available for specific versions without manifest
     EXPECTED_SHA256=""
+    
+    # If dry-run mode with specific version, output version info and exit
+    if [ "$DRY_RUN" = true ]; then
+        echo "Latest version: $ACTUAL_VERSION"
+        echo "Download path: $DOWNLOAD_PATH"
+        echo "Patchline: $PATCHLINE"
+        echo "SHA256: (not available for specific versions)"
+        exit 0
+    fi
 fi
 
 # Construct final paths
