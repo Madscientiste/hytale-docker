@@ -51,6 +51,8 @@ services:
       - RCON_HOST=0.0.0.0  # Allow RCON access from host (default: 127.0.0.1 = container only)
     volumes:
       - "./data:/data"
+    tmpfs:
+      - /sys/class/dmi/id:rw,noexec,nosuid,size=1m  # Required for hardware UUID (Linux)
     ports:
       - "5520:5520/udp"   # Hytale UDP/QUIC
       - "25575:25575/tcp" # RCON TCP (requires RCON_HOST=0.0.0.0 to access from host)
@@ -72,27 +74,27 @@ The container includes smart update checking to keep your server current:
 
 **Automatic Updates (Recommended):**
 ```bash
-docker restart hytale-server  # Checks for updates and auto-downloads if available
+docker compose restart hytale  # Checks for updates and auto-downloads if available
 ```
 
 **Manual Update Options:**
 ```bash
 # Force immediate update check (bypasses cooldown)
-FORCE_UPDATE_CHECK=true docker restart hytale-server
+FORCE_UPDATE_CHECK=true docker compose restart hytale
 
 # Force re-download even if up-to-date
-FORCE_DOWNLOAD=true docker restart hytale-server
+FORCE_DOWNLOAD=true docker compose restart hytale
 
 # Pin to specific version (disables update checking)
-VERSION=2026.01.17-4b0f30090 docker restart hytale-server
+VERSION=2026.01.17-4b0f30090 docker compose restart hytale
 ```
 
-**Update Behavior:**
-- ✅ **Smart checking**: Only checks for updates when `VERSION=LATEST`
-- ✅ **Cooldown protection**: Respects 1-hour cooldown to avoid API spam
-- ✅ **Version detection**: Compares installed version with latest available
-- ✅ **Automatic download**: Downloads new version automatically when found
-- ✅ **Safe updates**: Only updates during container startup (never while server is running)
+**Update Process:**
+- **Smart checks**: Updates are checked only when `VERSION=LATEST`.
+- **Cooldown enforced**: Update checks are throttled by a 1-hour cooldown to prevent excessive API requests.
+- **Version comparison**: The updater compares your current installed version with the latest release.
+- **Automated downloads**: If a new version is found, it is downloaded automatically.
+- **Update timing**: Updates occur only on container startup; the server will not update while running.
 
 **Files Created:**
 - `/data/.last-update-check` - Timestamp file for cooldown management
