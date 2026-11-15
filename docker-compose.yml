@@ -10,9 +10,6 @@ services:
     stdin_open: true
     # Settings: copy .env.example to .env and change values there.
     # Each line below reads its value from .env, falling back to the default shown.
-    env_file:
-      - path: .env
-        required: false
     environment:
       # Container & Permissions
       - HOST_UID=${UID:-1000}
@@ -25,11 +22,13 @@ services:
       - VERSION=${VERSION:-LATEST} # LATEST, or pin a version such as 0.7.7 (older date versions like 2026.01.17-4b0f30090 also work)
       - PATCHLINE=${PATCHLINE:-release} # Patchline/branch (typically 'release' or 'pre-release')
       - FORCE_DOWNLOAD=${FORCE_DOWNLOAD:-false} # Force re-download if true
+      - FORCE_UPDATE_CHECK=${FORCE_UPDATE_CHECK:-false} # true: skip the 1-hour update check cooldown
 
       # Restarts (docker exec hytale hy-restart works in every mode)
       - RESTART_MODE=${RESTART_MODE:-off} # off | schedule (daily at RESTART_TIME) | on-update (when a new version is out)
       - RESTART_TIME=${RESTART_TIME:-04:00} # Daily restart time for RESTART_MODE=schedule (HH:MM, time zone TZ)
       - RESTART_WARN_MINUTES=${RESTART_WARN_MINUTES:-5} # Warn players this many minutes before a restart
+      - RESTART_CHECK_MINUTES=${RESTART_CHECK_MINUTES:-60} # How often RESTART_MODE=on-update looks for a new version (minimum 10)
       - TZ=${TZ:-UTC} # Container time zone
 
       # Server Configuration
@@ -59,6 +58,11 @@ services:
       - TRANSPORT_TYPE=${TRANSPORT_TYPE:-} # Transport type (e.g., 'quic')
       - AUTH_MODE=${AUTH_MODE:-} # Authentication mode (e.g., 'online')
 
+      # Login & Health
+      - AUTH_REFRESH_HOURS=${AUTH_REFRESH_HOURS:-24} # Refresh the Hytale login this often while running
+      - MACHINE_ID=${MACHINE_ID:-} # Fixed hardware ID; empty: generated once, kept in data/machine-id
+      - HEALTH_STARTUP_MINUTES=${HEALTH_STARTUP_MINUTES:-15} # Startup may take this long before the container reports unhealthy
+
       # Backup Configuration
       - ENABLE_BACKUPS=${ENABLE_BACKUPS:-true} # Enable/disable backups (default: true)
       - BACKUP_DIR=${BACKUP_DIR:-/data/backups} # Absolute path for backups (default: /data/backups)
@@ -86,5 +90,5 @@ services:
       - "5520:5520/udp" # Hytale UDP/QUIC
       # RCON: only this host can connect (unencrypted protocol; never open it to the internet).
       # Inside the container you need no port: docker exec hytale rcon-cli who
-      - "127.0.0.1:25575:25575/tcp"
+      - "127.0.0.1:${RCON_PORT:-25575}:${RCON_PORT:-25575}/tcp"
       # - "5523:5523/tcp" # Web server plugin (Query, metrics); needs a login
