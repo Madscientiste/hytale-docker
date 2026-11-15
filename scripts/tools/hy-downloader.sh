@@ -116,7 +116,8 @@ curl_secret() {
     shift 2
     case "$value" in
         *'"'*|*\\*|*'
-'*) log_error "Refusing to pass a value with quotes, backslashes or line breaks to curl"; return 1 ;;
+'*|*"$(printf '\r')"*)
+            log_error "Refusing to pass a value with quotes, backslashes or line breaks to curl"; return 1 ;;
     esac
     printf '%s = "%s"\n' "$option" "$value" | curl -K - "$@"
 }
@@ -570,7 +571,7 @@ if [ "$VERSION" = "LATEST" ]; then
     MANIFEST_URL="${API_BASE}/game-assets/version/${PATCHLINE}.json"
     
     RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
-        "$MANIFEST_URL" 2>&1)
+        "$MANIFEST_URL" 2>&1) || error_exit "Failed to get manifest: ${RESPONSE:-no reply}"
     
     HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
     BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE:/d')
@@ -678,7 +679,7 @@ log_step "3" "Getting signed download URL..."
 DOWNLOAD_URL_ENDPOINT="${API_BASE}/game-assets/${DOWNLOAD_PATH}"
 
 DOWNLOAD_RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
-    "$DOWNLOAD_URL_ENDPOINT" 2>&1)
+    "$DOWNLOAD_URL_ENDPOINT" 2>&1) || error_exit "Failed to get the download link: ${DOWNLOAD_RESPONSE:-no reply}"
 
 DOWNLOAD_HTTP_CODE=$(echo "$DOWNLOAD_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
 DOWNLOAD_BODY=$(echo "$DOWNLOAD_RESPONSE" | sed '/HTTP_CODE:/d')
