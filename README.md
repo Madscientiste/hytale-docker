@@ -37,6 +37,7 @@ services:
     image: ghcr.io/madscientiste/hytale-docker:latest
     # Or build locally: build: .
     restart: unless-stopped
+    stop_grace_period: 60s   # time to save the world when stopping
     container_name: hytale
     tty: true
     stdin_open: true
@@ -88,6 +89,18 @@ docker exec hytale hy-restart --cancel # cancels a pending restart
 **Automatic restarts** are off by default. Set `RESTART_MODE=schedule` (daily at `RESTART_TIME`) or `RESTART_MODE=on-update` (when a new version is out).
 
 See [Update Management](docs/update-management.md) for details.
+
+### Upgrading from the January 2026 version
+
+If you use your own `docker-compose.yml` from back then, change these RCON lines (the old example was unsafe):
+
+| Old line | Change to | Why |
+|---|---|---|
+| `"25575:25575/tcp"` | `"127.0.0.1:25575:25575/tcp"` | The old line opens RCON on every network interface, past firewalls such as ufw |
+| `RCON_PASSWORD=verysecurepassword` | delete it | A random password is made and saved in `data/.rcon-password` |
+| `RCON_VERSION=latest` | delete it | The image then installs the RCON plugin it was tested with and checks its checksum |
+
+Also add `stop_grace_period: 60s` so the world is saved when the container stops. Using a `.env` file with this repository's `docker-compose.yml` needs Docker Compose 2.24 or newer.
 
 ## Documentation
 

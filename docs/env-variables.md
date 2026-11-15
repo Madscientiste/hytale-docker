@@ -200,7 +200,7 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 
 **Type:** Integer  
 **Default:** `5`  
-**Description:** How long players are warned before a restart (`hy-restart` and automatic restarts). `0` restarts without warning. Warnings need RCON with a plaintext `RCON_PASSWORD`.
+**Description:** How long players are warned before a restart (`hy-restart` and automatic restarts). `0` restarts without warning. Warnings use RCON (on by default); with RCON off or only `RCON_PASSWORD_HASH`, there are none.
 
 ### `RESTART_CHECK_MINUTES`
 
