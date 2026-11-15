@@ -273,17 +273,17 @@ for n in RCON_PORT RCON_MAX_CONNECTIONS RCON_MAX_FRAME_SIZE RCON_READ_TIMEOUT_MS
 done
 
 # Values are passed to jq as data, never pasted into the filter
-RCON_CONFIG_JSON=$(jq -n \
+# The hash goes through the environment, not --arg (command lines are readable with ps)
+RCON_CONFIG_JSON=$(HY_PASSWORD_HASH="$PASSWORD_HASH" jq -n \
     --arg host "$RCON_HOST" \
     --argjson port "$RCON_PORT" \
     --argjson maxConnections "$RCON_MAX_CONNECTIONS" \
     --argjson maxFrameSize "$RCON_MAX_FRAME_SIZE" \
     --argjson readTimeoutMs "$RCON_READ_TIMEOUT_MS" \
     --argjson connectionTimeoutMs "$RCON_CONNECTION_TIMEOUT_MS" \
-    --arg passwordHash "$PASSWORD_HASH" \
     '{host: $host, port: $port, maxConnections: $maxConnections, maxFrameSize: $maxFrameSize,
       readTimeoutMs: $readTimeoutMs, connectionTimeoutMs: $connectionTimeoutMs}
-     + (if $passwordHash != "" then {passwordHash: $passwordHash} else {} end)') \
+     + (env.HY_PASSWORD_HASH as $passwordHash | if $passwordHash != "" then {passwordHash: $passwordHash} else {} end)') \
     || error_exit "Failed to build RCON configuration"
 
 # If config file exists, merge with existing settings (preserve user customizations)
@@ -293,7 +293,7 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
     EXISTING_CONFIG=$(cat "$RCON_CONFIG_FILE" 2>/dev/null || echo "{}")
     if echo "$EXISTING_CONFIG" | jq empty 2>/dev/null; then
         # Merge: environment variables override existing config
-        RCON_CONFIG_JSON=$(echo "$EXISTING_CONFIG" | jq --argjson new_config "$RCON_CONFIG_JSON" '. + $new_config')
+        RCON_CONFIG_JSON=$(echo "$EXISTING_CONFIG" | HY_NEW_CONFIG="$RCON_CONFIG_JSON" jq '. + (env.HY_NEW_CONFIG | fromjson)')
         # The next plugin release keeps RCON off when the file has a key it
         # does not know (1.1.x ignores them); keys added by hand are kept, so
         # only warn
