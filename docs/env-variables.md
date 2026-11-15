@@ -593,47 +593,27 @@ RCON_ENABLED=true
 ### `RCON_VERSION`
 
 **Type:** String  
-**Default:** `latest`  
-**Description:** Version of the RCON plugin to download. Set to `latest` to automatically fetch the latest release from GitHub, or specify a specific version (e.g., `1.0.0`).
+**Default:** empty  
+**Description:** Which RCON plugin to install.
 
-**Example:**
-```bash
-RCON_VERSION=latest
-```
+- empty (default): the release this image was tested with. Its sha256 checksum is checked; a file that does not match is refused.
+- `latest`: the newest release on GitHub, not checked. If GitHub cannot be reached, the installed version is kept.
+- A release tag such as `rcon-v1.1.0`: that release, not checked.
 
-**Example (specific version):**
-```bash
-RCON_VERSION=1.0.0
-```
+Other versions found in `/data/mods` are moved to `/data/.disabled-plugins`, so only one RCON plugin loads.
 
 ---
 
 ### `RCON_HOST`
 
 **Type:** String (IP address)  
-**Default:** `127.0.0.1`  
-**Description:** IP address to bind the RCON server to within the Docker container.
+**Default:** `0.0.0.0` in `docker-compose.yml` (`127.0.0.1` when unset)  
+**Description:** The address the plugin listens on **inside** the container.
 
-**Docker Container Behavior:**
-- `127.0.0.1` (default): RCON is only accessible from within the container itself. **Not accessible from the host machine**, even if the port is mapped in `docker-compose.yml`.
-- `0.0.0.0`: RCON binds to all interfaces within the container, making it accessible from the host machine (when port `25575` is mapped) and from other containers on the same Docker network.
+- `0.0.0.0`: needed for a published port to work. Who can connect is decided by the port line in `docker-compose.yml`, which is `127.0.0.1:25575:25575` (this host only).
+- `127.0.0.1`: only programs inside the container can connect (`docker compose exec hytale rcon-cli`).
 
-**Security Considerations:**
-- To access RCON from your host machine, you must set `RCON_HOST=0.0.0.0` **and** have the port mapped in `docker-compose.yml`.
-- The port mapping in `docker-compose.yml` controls whether RCON is exposed to the host network.
-- Even with `0.0.0.0`, RCON is only accessible through the mapped port, providing some isolation.
-- Always use strong authentication (`RCON_PASSWORD` or `RCON_PASSWORD_HASH`) when exposing RCON to the network.
-- Consider using Docker network isolation or firewall rules for additional security.
-
-**Example (container-only access):**
-```bash
-RCON_HOST=127.0.0.1
-```
-
-**Example (accessible from host):**
-```bash
-RCON_HOST=0.0.0.0
-```
+RCON is not encrypted, and Docker's published ports bypass firewalls such as ufw: never publish it on all interfaces (`25575:25575`). See [rcon.md](rcon.md#who-can-connect).
 
 ---
 
@@ -643,42 +623,28 @@ RCON_HOST=0.0.0.0
 **Default:** `25575`  
 **Description:** Port number for the RCON server to listen on.
 
-**Example:**
-```bash
-RCON_PORT=25575
-```
-
 ---
 
 ### `RCON_PASSWORD`
 
 **Type:** String  
-**Default:** Not set (empty)  
-**Description:** Plain text password for RCON authentication. The password will be automatically hashed using SHA-256 with salt during container startup. If both `RCON_PASSWORD` and `RCON_PASSWORD_HASH` are provided, `RCON_PASSWORD_HASH` takes precedence.
+**Default:** empty  
+**Description:** Your RCON password. Empty: the image makes a random password once and saves it in `/data/.rcon-password` (mode 600). `rcon-cli` inside the container, the restart warnings and the health check use it by themselves.
 
-**Security Note:** If neither `RCON_PASSWORD` nor `RCON_PASSWORD_HASH` is set, RCON will run in insecure mode (no authentication required). This is only recommended for local development/testing.
+The image hashes the password in the shell from stdin, so it never appears on a command line. The old example value `verysecurepassword` logs a warning.
 
 **Example:**
 ```bash
 RCON_PASSWORD=MySecurePassword123
 ```
 
-**Security Note:** Consider using Docker secrets or environment files for sensitive passwords.
-
 ---
 
 ### `RCON_PASSWORD_HASH`
 
 **Type:** String  
-**Default:** Not set (empty)  
-**Description:** Pre-hashed password in the format `base64salt:base64hash`. This overrides `RCON_PASSWORD` if both are provided. You can generate a password hash using the plugin JAR or the Make command in the hytale-exp repository.
-
-**Format:** `base64salt:base64hash`
-
-**Example:**
-```bash
-RCON_PASSWORD_HASH=dGhpc2lzYXNsdA==:YW5kdGhpc2lzdGhlcGFzc3dvcmRoYXNo
-```
+**Default:** empty  
+**Description:** A password hash (`base64salt:base64hash`, made with `docker compose exec hytale gen-psswd`). It wins over `RCON_PASSWORD` for the plugin. With a hash only, the image cannot log in itself: no restart warnings over RCON, and a process-only health check.
 
 ---
 
@@ -734,25 +700,9 @@ RCON_CONNECTION_TIMEOUT_MS=5000
 
 ---
 
-### Automatic rcon-cli Configuration
+### `rcon-cli` inside the container
 
-The container automatically creates a `.rcon-cli.yaml` configuration file in the home directory (`~/.rcon-cli.yaml`) during RCON setup. This allows you to use the `rcon-cli` command without specifying `--host`, `--port`, or `--password` arguments.
-
-**Configuration file location:** `~/.rcon-cli.yaml`
-
-**Contents:**
-- `host`: Set from `RCON_HOST` environment variable
-- `port`: Set from `RCON_PORT` environment variable
-- `password`: Set from `RCON_PASSWORD` environment variable (only if `RCON_PASSWORD` is provided)
-
-**Usage:**
-```bash
-# If RCON_PASSWORD is set, you can use rcon-cli directly:
-docker compose exec hytale rcon-cli list
-docker compose exec hytale rcon-cli "say Hello!"
-```
-
-**Note:** The configuration file is created with permissions `600` (read/write for owner only) for security.
+`docker compose exec hytale rcon-cli <command>` connects to the server's RCON and uses `RCON_PASSWORD` or the generated password, with no flags. See [rcon.md](rcon.md).
 
 ---
 
