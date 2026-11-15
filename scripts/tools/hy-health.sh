@@ -38,7 +38,7 @@ case "$state" in
             echo "server process is running (no usable RCON password: process check only)"
             exit 0
         fi
-        if rcon_command who >/dev/null 2>&1; then
+        if reply=$(rcon_command who 2>&1); then
             echo "server answers over RCON"
             exit 0
         fi
@@ -46,7 +46,7 @@ case "$state" in
             echo "server booting for ${age}s"
             exit 0
         fi
-        echo "server does not answer over RCON"
+        echo "server does not answer over RCON: ${reply:-no reply within ${RCON_COMMAND_TIMEOUT:-10}s}"
         exit 1
         ;;
 esac

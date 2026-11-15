@@ -221,7 +221,7 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 The image has a Docker health check (`hy-health.sh`), shown as `healthy` / `unhealthy` in `docker ps`:
 
 - **Starting** (login, download, configuration): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. A long startup usually means the container waits for a browser login; see the logs.
-- **Running**: healthy while the server process runs and answers the `who` command over RCON. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
+- **Running**: healthy while the server process runs and answers the `who` command over RCON within 10 seconds. No reply, or a reply starting with `Error:`, counts as unhealthy. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
 
 ### `HEALTH_STARTUP_MINUTES`
 

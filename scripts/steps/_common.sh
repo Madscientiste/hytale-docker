@@ -138,12 +138,20 @@ rcon_usable() {
     ! echo "${RCON_PASSWORD}" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
 }
 
-# Send one command to the server over RCON. Fails when RCON is not usable.
+# Send one command to the server over RCON and print its reply. Fails when RCON
+# is not usable, when there is no reply within RCON_COMMAND_TIMEOUT seconds
+# (default 10, below the 15s health check timeout), or when the reply is an
+# error: the plugin answers "Error: ..." with exit code 0.
 # rcon-cli reads RCON_HOST/RCON_PORT/RCON_PASSWORD from the environment.
 rcon_command() {
+    local reply
     rcon_usable || return 1
-    RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="${RCON_PASSWORD}" \
-        rcon-cli "$@"
+    reply=$(RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="${RCON_PASSWORD}" \
+        timeout "${RCON_COMMAND_TIMEOUT:-10}" rcon-cli "$@" 2>&1) || return 1
+    case "$reply" in
+        Error:*) printf '%s\n' "$reply" >&2; return 1 ;;
+    esac
+    [ -z "$reply" ] || printf '%s\n' "$reply"
 }
 
 # Installed server version from /data/HytaleServer.jar, e.g. "0.7.7" (or the
