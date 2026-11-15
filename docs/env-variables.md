@@ -7,6 +7,7 @@ This document describes all environment variables that can be used to configure 
 - [Container & Permissions](#container--permissions)
 - [Logging](#logging)
 - [Server Download](#server-download)
+- [Automatic Restarts](#automatic-restarts)
 - [Server Configuration](#server-configuration)
 - [JVM & Server Startup](#jvm--server-startup)
 - [Backup Configuration](#backup-configuration)
@@ -161,16 +162,54 @@ FORCE_DOWNLOAD=true
 - Has no effect when using specific versions
 
 **Example:**
-```bash
-# Force immediate update check
-FORCE_UPDATE_CHECK=true docker restart hytale-server
-
-# Or in docker-compose.yml:
+```yaml
+# docker-compose.yml (then: docker compose up -d)
 environment:
   - FORCE_UPDATE_CHECK=true
 ```
 
+To check once without changing settings, use `docker exec hytale hy-restart --now`: a restart from `hy-restart` always skips the cooldown. A variable typed on the host (`FORCE_UPDATE_CHECK=true docker restart ...`) does not reach the container.
+
 **Note:** This only forces the **check** for updates. If no new version is available, no download will occur.
+
+---
+
+## Automatic Restarts
+
+Off by default. See [Update Management](update-management.md#restarting-the-server) for `hy-restart` and how restarts apply updates.
+
+### `RESTART_MODE`
+
+**Type:** String  
+**Default:** `off`  
+**Valid Values:**
+- `off` - No automatic restarts; restart by hand with `docker exec hytale hy-restart`
+- `schedule` - Restart every day at `RESTART_TIME`
+- `on-update` - Restart when a new server version is available (only with `VERSION=LATEST`), checked every `RESTART_CHECK_MINUTES`
+
+### `RESTART_TIME`
+
+**Type:** String (`HH:MM`, 24-hour)  
+**Default:** `04:00`  
+**Description:** Time of the daily restart with `RESTART_MODE=schedule`, in the container time zone (`TZ`). The player warning starts at this time; the restart follows `RESTART_WARN_MINUTES` later.
+
+### `RESTART_WARN_MINUTES`
+
+**Type:** Integer  
+**Default:** `5`  
+**Description:** How long players are warned before a restart (`hy-restart` and automatic restarts). `0` restarts without warning. Warnings need RCON with a plaintext `RCON_PASSWORD`.
+
+### `RESTART_CHECK_MINUTES`
+
+**Type:** Integer (minimum `10`)  
+**Default:** `60`  
+**Description:** How often `RESTART_MODE=on-update` checks for a new version.
+
+### `TZ`
+
+**Type:** String (time zone name, e.g. `Europe/Paris`)  
+**Default:** `UTC`  
+**Description:** Container time zone, used by `RESTART_TIME` and log timestamps.
 
 ---
 

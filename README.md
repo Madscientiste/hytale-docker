@@ -19,6 +19,7 @@ A Docker container for running Hytale game servers with automated authentication
 - **Automated OAuth2 authentication** with token refresh
 - **Auto-downloads server files** from Hytale's CDN
 - **Smart update checking** with cooldown protection
+- **In-container restarts** (`hy-restart`) and opt-in automatic restarts
 - **Built-in RCON support** for remote server management
 - **Automatic backups** with configurable retention
 - **Multi-platform images** (linux/amd64, linux/arm64)
@@ -68,41 +69,18 @@ docker compose logs -f  # Watch for authentication prompt on first run
 
 ### Updating Your Server
 
-The container includes smart update checking to keep your server current:
+The server updates only when it restarts, and only when `VERSION=LATEST` (the default). Pin a version (for example `VERSION=0.7.7`) to stay on it.
 
-**Automatic Updates (Recommended):**
+**Restart (and update) without stopping the container:**
 ```bash
-docker compose restart hytale  # Checks for updates and auto-downloads if available
+docker exec hytale hy-restart          # warns players, restarts in 5 minutes
+docker exec hytale hy-restart --now    # restarts immediately
+docker exec hytale hy-restart --cancel # cancels a pending restart
 ```
 
-**Manual Update Options:**
-```bash
-# Force immediate update check (bypasses cooldown)
-FORCE_UPDATE_CHECK=true docker compose restart hytale
+**Automatic restarts** are off by default. Set `RESTART_MODE=schedule` (daily at `RESTART_TIME`) or `RESTART_MODE=on-update` (when a new version is out).
 
-# Force re-download even if up-to-date
-FORCE_DOWNLOAD=true docker compose restart hytale
-
-# Pin to specific version (disables update checking)
-VERSION=2026.01.17-4b0f30090 docker compose restart hytale
-```
-
-**Update Process:**
-- **Smart checks**: Updates are checked only when `VERSION=LATEST`.
-- **Cooldown enforced**: Update checks are throttled by a 1-hour cooldown to prevent excessive API requests.
-- **Version comparison**: The updater compares your current installed version with the latest release.
-- **Automated downloads**: If a new version is found, it is downloaded automatically.
-- **Update timing**: Updates occur only on container startup; the server will not update while running.
-
-**Files Created:**
-- `/data/.last-update-check` - Timestamp file for cooldown management
-- `/data/HytaleServer.jar` - Server JAR (updated when new version available)
-- `/data/Assets.zip` - Game assets (updated when new version available)
-
-**Environment Variables:**
-- `FORCE_UPDATE_CHECK=true` - Force immediate update check
-- `VERSION=LATEST` - Enable automatic update checking (default)
-- `VERSION=<specific>` - Pin to specific version, disable update checking
+See [Update Management](docs/update-management.md) for details.
 
 ## Documentation
 
@@ -140,6 +118,8 @@ hytale-docker/
 │   └── tools/              # Utility scripts
 │       ├── hy-auth.sh      # OAuth2 authentication tool
 │       ├── hy-downloader.sh # Server file downloader
+│       ├── hy-restart.sh   # Restart the server inside the container
+│       ├── hy-scheduler.sh # Background jobs (automatic restarts)
 │       └── gen-psswd.sh    # RCON password hash generator
 └── docs/                   # Documentation
 ```
