@@ -48,8 +48,6 @@ services:
       - RCON_PORT=25575
     volumes:
       - "./data:/data"
-    tmpfs:
-      - /sys/class/dmi/id:rw,noexec,nosuid,size=1m  # Required for hardware UUID (Linux)
     ports:
       - "5520:5520/udp"   # Hytale game port
       - "25575:25575/tcp" # RCON port
@@ -99,39 +97,18 @@ Tested platforms (does not include ARM devices):
 - Ubuntu 24.04
 - Windows -> Not yet tested
 
-## Hardware UUID Configuration (Linux)
+## Hardware UUID (machine ID)
 
-The Hytale server requires access to hardware UUID information for telemetry purposes. On Linux systems, this requires a tmpfs mount to make the DMI directory writable.
+The server needs a stable "hardware UUID". It encrypts its saved credentials (`auth.enc`) with a key derived from it, so if the ID changes, the saved login can no longer be read.
 
-**Why is tmpfs needed?**
+On Linux the server reads `/etc/machine-id` first. The container handles this for you:
+- On the first start it generates an ID and saves it to `/data/machine-id`.
+- On every later start it reuses that file, so the ID stays the same.
+- To set your own, use `MACHINE_ID` (a UUID or 32 hex characters).
 
-The server tries to read `/sys/class/dmi/id/product_uuid`, but:
-- `/sys` is read-only in Docker containers
-- The host's DMI files may have restrictive permissions (root-only)
-- The server runs as a non-root user and cannot read these files
+No `tmpfs` mount or access to the host's `/sys` is needed. Earlier versions of this image asked for a `tmpfs` mount on `/sys/class/dmi/id`; it is no longer used and can be removed.
 
-The tmpfs mount overrides the read-only `/sys/class/dmi/id` directory with a writable version, allowing the container to create a `product_uuid` file with proper permissions.
-
-**Configuration:**
-
-The `docker-compose.yml` example above includes the required tmpfs mount:
-```yaml
-tmpfs:
-  - /sys/class/dmi/id:rw,noexec,nosuid,size=1m
-```
-
-This mount is **required on Linux** to prevent hardware UUID errors. Without it, you may see:
-```
-java.lang.RuntimeException: Failed to get hardware UUID for Linux - all methods failed
-```
-
-**Note:** This error is non-critical (used for telemetry/analytics) and the server will continue to function, but the tmpfs mount eliminates the error.
-
-**Additional Note:** At this time, the only reliable solution requires binding to the host's `/sys` directory, unless a custom mod is developed for the Hytale server to retrieve the hardware UUID directly from the container. Creating such a mod is not currently planned by me.
-
-**Windows Users:**
-
-The tmpfs mount configuration has not been tested on Windows containers. If you're running on Windows, you may need to adjust or omit this configuration. Please report any issues you encounter.
+**Note:** this needs the container to start as root (the default). If you run it with a `user:` override, `/etc/machine-id` cannot be written.
 
 ## Automated Builds
 

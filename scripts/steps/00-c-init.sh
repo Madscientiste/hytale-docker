@@ -23,6 +23,40 @@ switch_user_exec() {
     fi
 }
 
+# Give the container a stable hardware identity.
+# On Linux the server takes its "hardware UUID" from /etc/machine-id first
+# (exactly 32 characters, else it is skipped) and derives the auth.enc
+# encryption key from it, so the value must stay the same across restarts
+# or the saved credentials cannot be read.
+# Priority: MACHINE_ID env > /data/machine-id (kept from an earlier start) > new.
+setup_machine_id() {
+    local source raw id
+    if [ -n "${MACHINE_ID:-}" ]; then
+        raw="${MACHINE_ID}"
+        source="MACHINE_ID"
+    elif [ -s /data/machine-id ]; then
+        raw=$(head -n 1 /data/machine-id)
+        source="/data/machine-id"
+    else
+        raw=$(uuidgen)
+        source="new"
+    fi
+
+    # Normalise to the machine-id format: 32 lowercase hex characters, no dashes
+    id=$(printf '%s' "$raw" | sed 's/[-[:space:]]//g' | tr 'A-F' 'a-f')
+    if ! printf '%s' "$id" | grep -qE '^[0-9a-f]{32}$'; then
+        error_exit "Invalid machine ID from ${source}: '${raw}' (expected a UUID or 32 hex characters)"
+    fi
+
+    printf '%s\n' "$id" > /data/machine-id || error_exit "Failed to write /data/machine-id"
+    chmod 644 /data/machine-id 2>/dev/null || true
+    printf '%s\n' "$id" > /etc/machine-id || error_exit "Failed to write /etc/machine-id"
+    case "$source" in
+        new) log_info "Machine ID generated and saved to /data/machine-id: ${id}" ;;
+        *) log_info "Machine ID from ${source}: ${id}" ;;
+    esac
+}
+
 # If running as non-root and HOST_UID/HOST_GID not set, just run the entrypoint
 if [ "$(id -u)" != "0" ]; then
     if [ -z "${HOST_UID}" ] && [ -z "${HOST_GID}" ]; then
@@ -41,6 +75,7 @@ fi
 # If running as root but HOST_UID/HOST_GID not set, use defaults and run as hytale
 if [ -z "${HOST_UID}" ] || [ -z "${HOST_GID}" ]; then
     log_info "HOST_UID or HOST_GID not set, using default hytale user (UID 1000, GID 1000)"
+    setup_machine_id
     switch_user_exec hytale "$@"
     exit $?
 fi
@@ -92,27 +127,7 @@ if [ -d /data ]; then
     chown -R "${HOST_UID}:${HOST_GID}" /data || log_warn "Failed to change ownership of /data (may already be correct)"
 fi
 
-log_info "Setting up machine ID"
-MACHINE_ID=${MACHINE_ID:-$(uuidgen)}
-echo "${MACHINE_ID}" > /data/machine-id
-ln -sf /data/machine-id /etc/machine-id
-log_info "Machine ID set to ${MACHINE_ID}"
-
-# Create DMI workaround for hardware UUID (fixes HardwareUtil error in Docker)
-# The Hytale server tries to read /sys/class/dmi/id/product_uuid which may not exist in containers
-# Using tmpfs mount (configured in docker-compose.yml) to make this directory writable
-log_info "Setting up DMI hardware UUID workaround"
-if [ ! -d /sys/class/dmi/id ]; then
-    mkdir -p /sys/class/dmi/id 2>/dev/null || log_warn "Could not create /sys/class/dmi/id"
-fi
-
-# Create product_uuid file using machine-id with readable permissions
-# Format machine-id as UUID (add dashes if needed)
-UUID_FORMAT=$(echo "${MACHINE_ID}" | sed 's/\([0-9a-f]\{8\}\)\([0-9a-f]\{4\}\)\([0-9a-f]\{4\}\)\([0-9a-f]\{4\}\)\([0-9a-f]\{12\}\)/\1-\2-\3-\4-\5/')
-echo "${UUID_FORMAT}" > /sys/class/dmi/id/product_uuid 2>/dev/null && \
-    chmod 644 /sys/class/dmi/id/product_uuid 2>/dev/null && \
-    log_info "DMI hardware UUID workaround configured: ${UUID_FORMAT}" || \
-    log_warn "Could not write product_uuid to /sys/class/dmi/id (tmpfs mount may be required)"
+setup_machine_id
 
 # Switch to hytale user and run the actual entrypoint
 switch_user_exec hytale "$@"

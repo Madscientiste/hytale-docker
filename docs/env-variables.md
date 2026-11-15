@@ -50,6 +50,18 @@ docker run -e HOST_UID=1000 -e HOST_GID=1000 ...
 
 **Note:** The container runs as root initially to modify the user/group at runtime, then drops privileges to the `hytale` user before starting the server.
 
+### `MACHINE_ID`
+
+**Type:** String (a UUID, or 32 hex characters)  
+**Default:** generated on the first start and saved to `/data/machine-id`  
+**Description:** The server's hardware UUID, written to `/etc/machine-id`. The server derives the encryption key of its saved credentials (`auth.enc`) from it, so it must stay the same across restarts. Leave it unset to keep the saved `/data/machine-id`; set it only to move a server to a new data folder with the same identity.
+
+**Example:**
+```yaml
+environment:
+  - MACHINE_ID=0f1e2d3c4b5a69788796a5b4c3d2e1f0
+```
+
 ---
 
 ## Logging
