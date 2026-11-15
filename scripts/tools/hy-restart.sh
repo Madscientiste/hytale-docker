@@ -64,6 +64,10 @@ if [ "${CANCEL:-false}" = true ]; then
         [ -d "/proc/$pid" ] || { log_info "No restart is pending"; exit 0; }
         error_exit "Could not stop the pending restart (process $pid). Run hy-restart --cancel as the same user that started it, e.g. docker exec -u root"
     fi
+    # The countdown ignores TERM once the restart has begun
+    if [ -f "$HYTALE_RESTART_FLAG" ] && [ -d "/proc/$pid" ]; then
+        error_exit "Too late to cancel: the restart has already begun"
+    fi
     # Under the lock, and only while the marker is still the cancelled one: a
     # new countdown may have claimed it in the meantime
     exec 9< "$HYTALE_RUN_DIR"
