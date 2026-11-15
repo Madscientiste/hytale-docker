@@ -55,6 +55,10 @@ VOLUME ["/data"]
 WORKDIR /data
 EXPOSE 5520/udp 25575/tcp
 
+# Healthy while starting up (up to HEALTH_STARTUP_MINUTES) and while the server
+# runs and answers over RCON; see scripts/tools/hy-health.sh
+HEALTHCHECK --interval=30s --timeout=15s --start-period=2m --retries=3 CMD ["/usr/local/bin/hy-health.sh"]
+
 STOPSIGNAL SIGTERM
 # Run as root to allow runtime UID/GID modification via HOST_UID/HOST_GID
 # Script will drop privileges to hytale user (or custom UID/GID) before starting server

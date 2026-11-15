@@ -8,6 +8,7 @@ This document describes all environment variables that can be used to configure 
 - [Logging](#logging)
 - [Server Download](#server-download)
 - [Automatic Restarts](#automatic-restarts)
+- [Health Check](#health-check)
 - [Server Configuration](#server-configuration)
 - [JVM & Server Startup](#jvm--server-startup)
 - [Backup Configuration](#backup-configuration)
@@ -210,6 +211,21 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 **Type:** String (time zone name, e.g. `Europe/Paris`)  
 **Default:** `UTC`  
 **Description:** Container time zone, used by `RESTART_TIME` and log timestamps.
+
+---
+
+## Health Check
+
+The image has a Docker health check (`hy-health.sh`), shown as `healthy` / `unhealthy` in `docker ps`:
+
+- **Starting** (login, download, configuration): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. A long startup usually means the container waits for a browser login; see the logs.
+- **Running**: healthy while the server process runs and answers the `who` command over RCON. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
+
+### `HEALTH_STARTUP_MINUTES`
+
+**Type:** Integer  
+**Default:** `15`  
+**Description:** How long startup may take before the container reports unhealthy.
 
 ---
 

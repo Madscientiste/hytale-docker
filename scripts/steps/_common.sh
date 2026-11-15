@@ -123,6 +123,7 @@ HYTALE_RUN_DIR="/tmp/hytale"
 HYTALE_PID_FILE="${HYTALE_RUN_DIR}/server.pid"
 HYTALE_RESTART_FLAG="${HYTALE_RUN_DIR}/restart-requested"
 HYTALE_RESTART_PENDING="${HYTALE_RUN_DIR}/restart-pending"
+HYTALE_STATE_FILE="${HYTALE_RUN_DIR}/state"  # "starting|running <epoch>"
 
 # Run a command while holding the auth lock. Hytale rotates the refresh token
 # on every use, so two refreshes at once would invalidate each other.
@@ -130,12 +131,17 @@ with_auth_lock() {
     flock /data/.auth.lock "$@"
 }
 
-# Send one command to the server over RCON. Fails when RCON is off or no
-# plaintext password is known. rcon-cli reads RCON_PASSWORD from the environment.
-rcon_command() {
+# True when RCON is on and a plaintext password is known (not only a hash)
+rcon_usable() {
     [ "${RCON_ENABLED:-true}" = "true" ] || return 1
     [ -n "${RCON_PASSWORD:-}" ] || return 1
-    echo "${RCON_PASSWORD}" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$' && return 1
+    ! echo "${RCON_PASSWORD}" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
+}
+
+# Send one command to the server over RCON. Fails when RCON is not usable.
+# rcon-cli reads RCON_HOST/RCON_PORT/RCON_PASSWORD from the environment.
+rcon_command() {
+    rcon_usable || return 1
     RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="${RCON_PASSWORD}" \
         rcon-cli "$@"
 }

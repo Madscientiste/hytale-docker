@@ -20,6 +20,7 @@ A Docker container for running Hytale game servers with automated authentication
 - **Auto-downloads server files** from Hytale's CDN
 - **Smart update checking** with cooldown protection
 - **In-container restarts** (`hy-restart`) and opt-in automatic restarts
+- **Health check** for `docker ps`, Dokploy, Portainer and similar tools
 - **Built-in RCON support** for remote server management
 - **Automatic backups** with configurable retention
 - **Multi-platform images** (linux/amd64, linux/arm64)
@@ -119,7 +120,8 @@ hytale-docker/
 │       ├── hy-auth.sh      # OAuth2 authentication tool
 │       ├── hy-downloader.sh # Server file downloader
 │       ├── hy-restart.sh   # Restart the server inside the container
-│       ├── hy-scheduler.sh # Background jobs (automatic restarts)
+│       ├── hy-scheduler.sh # Background jobs (login refresh, automatic restarts)
+│       ├── hy-health.sh    # Docker health check
 │       └── gen-psswd.sh    # RCON password hash generator
 └── docs/                   # Documentation
 ```
