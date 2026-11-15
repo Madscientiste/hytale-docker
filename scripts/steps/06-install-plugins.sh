@@ -20,7 +20,7 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")
 . "${SCRIPT_DIR}/_common.sh"
 
 MODS_DIR="/data/mods"
-MANAGED_LIST="${MODS_DIR}/.recommended-plugins.txt"   # "<key> <file>" per line
+MANAGED_LIST="/data/.recommended-plugins.txt"   # "<key> <file>" per line (outside mods: the server reads every file there)
 DISABLED_DIR="/data/.disabled-plugins"
 
 # key | GitHub repository | jar name prefix | setting
@@ -42,7 +42,7 @@ fi
 
 enabled() {
     eval "v=\${$1:-true}"
-    [ "$v" = "true" ]
+    [ "$(printf '%s' "$v" | tr '[:upper:]' '[:lower:]')" = "true" ]
 }
 
 managed_file() {
@@ -57,13 +57,16 @@ set_managed() {
     mv -f "$list" "$MANAGED_LIST"
 }
 
-# Direct link to the newest release jar built for $SERVER_VERSION
-find_jar_url() {
+# Newest release jar built for $SERVER_VERSION: "<link> <sha256:...|none>".
+# GitHub records a sha256 for each uploaded file; the download is checked
+# against it.
+find_jar() {
     curl -fsSL --connect-timeout 15 --max-time 60 -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/$1/releases?per_page=20" 2>/dev/null \
         | jq -r --arg suffix "+${SERVER_VERSION}.jar" \
             '[.[] | select(.draft | not) | select(.prerelease | not) | .assets[]
-              | select(.name | endswith($suffix))][0].browser_download_url // empty'
+              | select(.name | endswith($suffix))][0]
+              | select(. != null) | "\(.browser_download_url) \(.digest // "none")"'
 }
 
 disable_managed() {
@@ -111,7 +114,9 @@ echo "$PLUGINS" | while IFS='|' read -r key repo prefix setting; do
             ;;
     esac
 
-    url=$(find_jar_url "$repo")
+    found=$(find_jar "$repo")
+    url=${found%% *}
+    digest=${found#* }
     if [ -z "$url" ]; then
         log_warn "No ${key} plugin build for server ${SERVER_VERSION} found (https://github.com/${repo}/releases); skipping it"
         [ -n "$current" ] && disable_managed "$current" "built for another server version"
@@ -126,6 +131,19 @@ echo "$PLUGINS" | while IFS='|' read -r key repo prefix setting; do
         [ -n "$current" ] && disable_managed "$current" "built for another server version"
         continue
     fi
+    case "$digest" in
+        sha256:*)
+            actual=$(sha256sum "${MODS_DIR}/.${file}.part" | cut -d' ' -f1)
+            if [ "$actual" != "${digest#sha256:}" ]; then
+                rm -f "${MODS_DIR}/.${file}.part"
+                log_error "${file} does not match the checksum GitHub has for it; not installed"
+                [ -n "$current" ] && disable_managed "$current" "built for another server version"
+                continue
+            fi
+            log_info "Checksum OK (sha256 ${actual})"
+            ;;
+        *) log_warn "GitHub has no checksum for ${file}; installed without a check" ;;
+    esac
     mv -f "${MODS_DIR}/.${file}.part" "${MODS_DIR}/${file}"
 
     # Remove the jar this image installed for an older server version
