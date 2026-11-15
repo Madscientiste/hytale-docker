@@ -11,6 +11,7 @@ This document describes all environment variables that can be used to configure 
 - [Health Check](#health-check)
 - [Server Configuration](#server-configuration)
 - [Mods](#mods)
+- [Recommended Plugins](#recommended-plugins)
 - [JVM & Server Startup](#jvm--server-startup)
 - [Backup Configuration](#backup-configuration)
 - [RCON Configuration](#rcon-configuration)
@@ -350,6 +351,37 @@ Hytale loads every `.jar` and `.zip` in `/data/mods` (on the host: `data/mods`).
 **Example:**
 ```bash
 MODS=https://example.com/mods/cool-mod-1.2.0.jar,https://example.com/mods/other-mod.zip
+```
+
+---
+
+## Recommended Plugins
+
+Hytale's official server manual recommends four plugins. This image installs them by default. On every start it downloads the build that matches the installed server version from each plugin's GitHub releases into `/data/mods`.
+
+| Setting | Plugin | What it does |
+|---|---|---|
+| `ENABLE_WEBSERVER` | [Nitrado:WebServer](https://github.com/nitrado/hytale-plugin-webserver) | Web server (HTTPS) that the next two plugins use |
+| `ENABLE_QUERY` | [Nitrado:Query](https://github.com/nitrado/hytale-plugin-query) | Server info and player count over HTTP |
+| `ENABLE_METRICS` | [ApexHosting:PrometheusExporter](https://github.com/apexhosting/hytale-plugin-prometheus) | Prometheus metrics |
+| `ENABLE_PERFORMANCE_SAVER` | [Nitrado:PerformanceSaver](https://github.com/nitrado/hytale-plugin-performance-saver) | Lowers load under pressure |
+
+All four are **Type:** Boolean, **Default:** `true`. Set one to `false` to turn that plugin off.
+
+- `ENABLE_QUERY` and `ENABLE_METRICS` need `ENABLE_WEBSERVER=true`.
+- A plugin you turn off is moved to `/data/.disabled-plugins`, outside `mods/`, so the server ignores it. Turning it back on moves it back.
+- When the server version changes, the image replaces the jars it installed with the builds for the new version. If a plugin has no build for that version yet, it is skipped for now (with a warning) and the server starts without it.
+- If you put your own copy of one of these plugins in `data/mods`, the image leaves that plugin alone.
+- The image only touches the jars it downloaded itself. They are listed in `data/mods/.recommended-plugins.txt`.
+
+**Web server port:** the web server listens on the game port + 3, so **5523/tcp** by default, with a self-signed certificate. It is not reachable from outside the container until you map the port in `docker-compose.yml` (`"5523:5523/tcp"`). Requests need a login: a player, or a service account. To make basic server info public, add it to the `ANONYMOUS` group in `permissions.json`. See the plugins' READMEs (linked above) for service accounts and permissions.
+
+**PerformanceSaver:** caps the server at 20 ticks per second (5 when nobody is online), lowers the view radius while CPU or memory is under pressure, and raises it again when they recover. Set `ENABLE_PERFORMANCE_SAVER=false` to keep the server's own behaviour.
+
+**Example:**
+```bash
+ENABLE_METRICS=false             # no Prometheus metrics
+ENABLE_PERFORMANCE_SAVER=false   # keep the full tick rate and view radius
 ```
 
 ---

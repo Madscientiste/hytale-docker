@@ -31,10 +31,6 @@ refresh_auth_if_expiring() {
     with_auth_lock sh /usr/local/bin/hy-auth.sh --quiet --refresh "$AUTH_FILE"
 }
 
-installed_version() {
-    java -jar /data/HytaleServer.jar --version 2>/dev/null | sed -n 's/^HytaleServer v\([^ ]*\).*/\1/p' | tail -n 1
-}
-
 latest_version() {
     hy-downloader.sh --auth-file "$AUTH_FILE" --output-dir /tmp --server-version LATEST \
         --patchline "${PATCHLINE:-release}" --dry-run 2>/dev/null | sed -n 's/^Latest version: //p'
@@ -73,7 +69,7 @@ run_on_update() {
             log_warn "Update check skipped: could not refresh the login"
             continue
         fi
-        current=$(installed_version)
+        current=$(installed_server_version)
         latest=$(latest_version)
         if [ -z "$current" ] || [ -z "$latest" ]; then
             log_warn "Update check skipped: could not read the installed or latest version"

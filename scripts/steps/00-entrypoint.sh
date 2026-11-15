@@ -65,6 +65,9 @@ while :; do
     # Step 4b: Download mods listed in MODS
     "${SCRIPT_DIR}/05-install-mods.sh"
 
+    # Step 4c: Hytale's recommended plugins (ENABLE_WEBSERVER etc.)
+    "${SCRIPT_DIR}/06-install-plugins.sh"
+
     # Step 5: Load authentication credentials
     log_step "5" "Loading authentication credentials"
     . "${SCRIPT_DIR}/03-load-auth.sh"

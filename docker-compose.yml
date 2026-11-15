@@ -43,6 +43,12 @@ services:
       # Mods: download links (.jar/.zip), comma-separated; downloaded once into data/mods
       - MODS=${MODS:-}
 
+      # Recommended plugins (docs/env-variables.md#recommended-plugins)
+      - ENABLE_WEBSERVER=${ENABLE_WEBSERVER:-true} # Web server used by Query and metrics (port 5523/tcp)
+      - ENABLE_QUERY=${ENABLE_QUERY:-true} # Server info and player count over HTTP
+      - ENABLE_METRICS=${ENABLE_METRICS:-true} # Prometheus metrics
+      - ENABLE_PERFORMANCE_SAVER=${ENABLE_PERFORMANCE_SAVER:-true} # Lowers load under pressure
+
       # JVM & Server Startup
       - INIT_MEMORY=${INIT_MEMORY:-8G} # Initial Java heap size
       - MAX_MEMORY=${MAX_MEMORY:-16G} # Maximum Java heap size
@@ -78,3 +84,4 @@ services:
     ports:
       - "5520:5520/udp" # Hytale UDP/QUIC
       - "25575:25575/tcp" # RCON TCP
+      # - "5523:5523/tcp" # Web server plugin (Query, metrics); needs a login

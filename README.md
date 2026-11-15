@@ -21,6 +21,7 @@ A Docker container for running Hytale game servers with automated authentication
 - **Smart update checking** with cooldown protection
 - **In-container restarts** (`hy-restart`) and opt-in automatic restarts
 - **Mods from download links** (`MODS`)
+- **Hytale's recommended plugins** installed by default (WebServer, Query, Prometheus metrics, PerformanceSaver)
 - **Health check** for `docker ps`, Dokploy, Portainer and similar tools
 - **Built-in RCON support** for remote server management
 - **Automatic backups** with configurable retention
@@ -122,6 +123,7 @@ hytale-docker/
 │   │   ├── 03-load-auth.sh
 │   │   ├── 04-setup-rcon.sh
 │   │   ├── 05-install-mods.sh
+│   │   ├── 06-install-plugins.sh
 │   │   └── 09-start-server.sh
 │   └── tools/              # Utility scripts
 │       ├── hy-auth.sh      # OAuth2 authentication tool
