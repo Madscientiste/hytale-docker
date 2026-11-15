@@ -598,7 +598,7 @@ RCON_ENABLED=true
 
 - empty (default): the release this image was tested with. Its sha256 checksum is checked; a file that does not match is refused.
 - `latest`: the newest release on GitHub, not checked. If GitHub cannot be reached, the installed version is kept.
-- A release tag such as `rcon-v1.1.0`: that release, not checked.
+- A release tag such as `rcon-v1.1.1`: that release, not checked.
 
 Other versions found in `/data/mods` are moved to `/data/.disabled-plugins`, so only one RCON plugin loads.
 

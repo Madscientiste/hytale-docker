@@ -18,8 +18,8 @@ RCON_ENABLED="${RCON_ENABLED:-true}"
 # Empty: the plugin release this image was tested with, checked by sha256.
 # "latest" (newest release) or a tag such as "rcon-v1.1.0": not checked.
 RCON_VERSION="${RCON_VERSION:-}"
-RCON_PINNED_TAG="rcon-v1.1.0"
-RCON_PINNED_SHA256="bb7baec2f9dda95ab532c4d3223d8040180284706ba63047aaca5e6aafbb34e7"
+RCON_PINNED_TAG="rcon-v1.1.1"
+RCON_PINNED_SHA256="86fa51aff4ea19baab7322f4e48308b75d2b28bf358b1df1e3b91aa9b2b72413"
 EXPECTED_SHA256=""
 RCON_HOST="${RCON_HOST:-127.0.0.1}"
 RCON_PORT="${RCON_PORT:-25575}"
