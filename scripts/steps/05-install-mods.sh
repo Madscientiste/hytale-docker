@@ -11,7 +11,7 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")
 . "${SCRIPT_DIR}/_common.sh"
 
 MODS_DIR="/data/mods"
-MANAGED_LIST="${MODS_DIR}/.mods-from-MODS.txt"   # "<file> <url>" per line
+MANAGED_LIST="/data/.mods-from-MODS.txt"   # "<file> <url>" per line (outside mods: the server reads every file there)
 
 MODS="${MODS:-}"
 if [ -z "$(echo "$MODS" | tr -d '[:space:],')" ] && [ ! -s "$MANAGED_LIST" ]; then
@@ -35,7 +35,8 @@ NEW_LIST=$(mktemp)
 COUNT=0
 for url in $(echo "$MODS" | tr ',' ' '); do
     case "$url" in
-        https://*|http://*) ;;
+        https://*) ;;
+        http://*) log_warn "MODS: $url is not encrypted (http); anyone on the way could swap the file. Use an https:// link if the site has one" ;;
         *) error_exit "MODS: not a download link: $url" ;;
     esac
 
