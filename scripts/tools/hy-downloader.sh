@@ -571,7 +571,7 @@ if [ "$VERSION" = "LATEST" ]; then
     MANIFEST_URL="${API_BASE}/game-assets/version/${PATCHLINE}.json"
     
     RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
-        "$MANIFEST_URL" 2>&1) || error_exit "Failed to get manifest: ${RESPONSE:-no reply}"
+        "$MANIFEST_URL") || error_exit "Failed to get manifest (curl exit $?)"   # never print the reply: it may hold a signed link
     
     HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
     BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE:/d')
@@ -679,7 +679,7 @@ log_step "3" "Getting signed download URL..."
 DOWNLOAD_URL_ENDPOINT="${API_BASE}/game-assets/${DOWNLOAD_PATH}"
 
 DOWNLOAD_RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
-    "$DOWNLOAD_URL_ENDPOINT" 2>&1) || error_exit "Failed to get the download link: ${DOWNLOAD_RESPONSE:-no reply}"
+    "$DOWNLOAD_URL_ENDPOINT") || error_exit "Failed to get the download link (curl exit $?)"   # never print the reply: it holds a signed link
 
 DOWNLOAD_HTTP_CODE=$(echo "$DOWNLOAD_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
 DOWNLOAD_BODY=$(echo "$DOWNLOAD_RESPONSE" | sed '/HTTP_CODE:/d')
