@@ -74,7 +74,10 @@ if pid=$(pending_pid); then
 fi
 
 mkdir -p "$HYTALE_RUN_DIR"
-echo $$ > "$HYTALE_RESTART_PENDING"
+# A stale marker (its process is gone) may belong to another user, e.g. root
+# from docker exec; removing it only needs write access to the folder
+rm -f "$HYTALE_RESTART_PENDING"
+echo $$ > "$HYTALE_RESTART_PENDING" || error_exit "Cannot write $HYTALE_RESTART_PENDING"
 SLEEP_PID=""
 # Remove the marker only while it is still ours: a cancelled countdown must
 # not delete the marker of a newer one
