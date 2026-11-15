@@ -145,3 +145,11 @@ rcon_command() {
     RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="${RCON_PASSWORD}" \
         rcon-cli "$@"
 }
+
+# Installed server version from /data/HytaleServer.jar, e.g. "0.7.7" (or the
+# January 2026 form "2026.01.17-4b0f30090"). Empty when unknown.
+installed_server_version() {
+    [ -f /data/HytaleServer.jar ] || return 1
+    java -jar /data/HytaleServer.jar --version 2>/dev/null \
+        | sed -n 's/^HytaleServer v\([^ ]*\).*/\1/p' | tail -n 1
+}
