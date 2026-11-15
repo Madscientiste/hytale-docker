@@ -106,6 +106,21 @@ error_exit() {
     exit 1
 }
 
+# Run curl with one secret option (a token, a signed link) given on stdin as a
+# curl config (-K -), not on the command line: any user on the host can read
+# command lines with ps. $1: the option name (header, data, url), $2: its value,
+# then the other curl arguments. printf is a shell builtin, so it adds no
+# command line either.
+curl_secret() {
+    local option="$1" value="$2"
+    shift 2
+    case "$value" in
+        *'"'*|*\\*|*'
+'*) log_error "Refusing to pass a value with quotes, backslashes or line breaks to curl"; return 1 ;;
+    esac
+    printf '%s = "%s"\n' "$option" "$value" | curl -K - "$@"
+}
+
 # Check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -554,8 +569,7 @@ if [ "$VERSION" = "LATEST" ]; then
     log_step "1" "Getting version manifest for patchline: $PATCHLINE"
     MANIFEST_URL="${API_BASE}/game-assets/version/${PATCHLINE}.json"
     
-    RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
-        -H "Authorization: Bearer $ACCESS_TOKEN" \
+    RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
         "$MANIFEST_URL" 2>&1)
     
     HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
@@ -579,7 +593,7 @@ if [ "$VERSION" = "LATEST" ]; then
     log_success "Got signed manifest URL"
     
     log_step "2" "Fetching manifest content..."
-    MANIFEST=$(curl -s --connect-timeout 15 --max-time 60 "$SIGNED_MANIFEST_URL") || error_exit "Failed to fetch manifest"
+    MANIFEST=$(curl_secret url "$SIGNED_MANIFEST_URL" -s --connect-timeout 15 --max-time 60) || error_exit "Failed to fetch manifest"
     
     # Parse manifest JSON
     if [ "$USE_JQ" = true ]; then
@@ -663,8 +677,7 @@ fi
 log_step "3" "Getting signed download URL..."
 DOWNLOAD_URL_ENDPOINT="${API_BASE}/game-assets/${DOWNLOAD_PATH}"
 
-DOWNLOAD_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" \
+DOWNLOAD_RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
     "$DOWNLOAD_URL_ENDPOINT" 2>&1)
 
 DOWNLOAD_HTTP_CODE=$(echo "$DOWNLOAD_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
@@ -701,7 +714,7 @@ log_info "This may take a while..."
 
 # Download with progress
 # Abort a stalled download (under 1 KB/s for a minute) instead of hanging
-if curl -L --connect-timeout 15 --speed-limit 1024 --speed-time 60 --progress-bar -o "$TEMP_DOWNLOAD" "$SIGNED_DOWNLOAD_URL"; then
+if curl_secret url "$SIGNED_DOWNLOAD_URL" -L --connect-timeout 15 --speed-limit 1024 --speed-time 60 --progress-bar -o "$TEMP_DOWNLOAD"; then
     FILE_SIZE=$(du -h "$TEMP_DOWNLOAD" | cut -f1)
     log_success "Download complete! File size: $FILE_SIZE"
 else
