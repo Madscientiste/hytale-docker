@@ -73,92 +73,56 @@ log_info "Updating configuration from environment variables..."
 # Track if any changes were made
 CHANGES_MADE=false
 
+# Set one config key from an environment value.
+# Values are passed to jq as data (--arg/--argjson), never pasted into the
+# filter, so quotes, backslashes and other characters are kept exactly.
+#   set_config <jq path> <value> <string|number> <label>
+set_config() {
+    local path="$1" value="$2" type="$3" label="$4"
+    log_debug "Setting ${label}"
+    if [ "$type" = "number" ]; then
+        jq --argjson v "$value" "${path} = \$v" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null
+    else
+        jq --arg v "$value" "${path} = \$v" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null
+    fi
+    if [ $? -eq 0 ]; then
+        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
+        CHANGES_MADE=true
+    else
+        error_exit "Failed to set ${label}"
+    fi
+}
+
+require_integer() {
+    if ! echo "$2" | grep -qE '^[0-9]+$'; then
+        error_exit "$1 must be a positive integer, got: $2"
+    fi
+}
+
 # Server Settings
-if [ -n "${SERVER_NAME:-}" ]; then
-    log_debug "Setting ServerName to: $SERVER_NAME"
-    if jq ".ServerName = \"$SERVER_NAME\"" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-        CHANGES_MADE=true
-    else
-        error_exit "Failed to set ServerName"
-    fi
-fi
-
-if [ -n "${MOTD:-}" ]; then
-    log_debug "Setting MOTD to: $MOTD"
-    if jq ".MOTD = \"$MOTD\"" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-        CHANGES_MADE=true
-    else
-        error_exit "Failed to set MOTD"
-    fi
-fi
-
-if [ -n "${SERVER_PASSWORD:-}" ]; then
-    log_debug "Setting Password"
-    if jq ".Password = \"$SERVER_PASSWORD\"" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-        CHANGES_MADE=true
-    else
-        error_exit "Failed to set Password"
-    fi
-fi
+[ -n "${SERVER_NAME:-}" ] && set_config '.ServerName' "$SERVER_NAME" string ServerName
+[ -n "${MOTD:-}" ] && set_config '.MOTD' "$MOTD" string MOTD
+[ -n "${SERVER_PASSWORD:-}" ] && set_config '.Password' "$SERVER_PASSWORD" string Password
 
 if [ -n "${MAX_PLAYERS:-}" ]; then
-    # Validate it's a number
-    if ! echo "$MAX_PLAYERS" | grep -qE '^[0-9]+$'; then
-        error_exit "MAX_PLAYERS must be a positive integer, got: $MAX_PLAYERS"
-    fi
-    log_debug "Setting MaxPlayers to: $MAX_PLAYERS"
-    if jq ".MaxPlayers = ($MAX_PLAYERS | tonumber)" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-        CHANGES_MADE=true
-    else
-        error_exit "Failed to set MaxPlayers"
-    fi
+    require_integer MAX_PLAYERS "$MAX_PLAYERS"
+    set_config '.MaxPlayers' "$MAX_PLAYERS" number MaxPlayers
 fi
 
 if [ -n "${MAX_VIEW_RADIUS:-}" ]; then
-    # Validate it's a number
-    if ! echo "$MAX_VIEW_RADIUS" | grep -qE '^[0-9]+$'; then
-        error_exit "MAX_VIEW_RADIUS must be a positive integer, got: $MAX_VIEW_RADIUS"
-    fi
-    log_debug "Setting MaxViewRadius to: $MAX_VIEW_RADIUS"
-    if jq ".MaxViewRadius = ($MAX_VIEW_RADIUS | tonumber)" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-        CHANGES_MADE=true
-    else
-        error_exit "Failed to set MaxViewRadius"
-    fi
+    require_integer MAX_VIEW_RADIUS "$MAX_VIEW_RADIUS"
+    set_config '.MaxViewRadius' "$MAX_VIEW_RADIUS" number MaxViewRadius
 fi
 
 # Defaults
-if [ -n "${DEFAULT_WORLD:-}" ]; then
-    log_debug "Setting Defaults.World to: $DEFAULT_WORLD"
-    if jq ".Defaults.World = \"$DEFAULT_WORLD\"" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-        mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-        CHANGES_MADE=true
-    else
-        error_exit "Failed to set Defaults.World"
-    fi
-fi
+[ -n "${DEFAULT_WORLD:-}" ] && set_config '.Defaults.World' "$DEFAULT_WORLD" string Defaults.World
 
 if [ -n "${DEFAULT_GAME_MODE:-}" ]; then
-    # Validate game mode
     case "$DEFAULT_GAME_MODE" in
-        Adventure|Creative|Survival)
-            log_debug "Setting Defaults.GameMode to: $DEFAULT_GAME_MODE"
-            if jq ".Defaults.GameMode = \"$DEFAULT_GAME_MODE\"" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null; then
-                mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
-                CHANGES_MADE=true
-            else
-                error_exit "Failed to set Defaults.GameMode"
-            fi
-            ;;
-        *)
-            error_exit "Invalid DEFAULT_GAME_MODE: $DEFAULT_GAME_MODE (must be Adventure, Creative, or Survival)"
-            ;;
+        Adventure|Creative|Survival) ;;
+        *) error_exit "Invalid DEFAULT_GAME_MODE: $DEFAULT_GAME_MODE (must be Adventure, Creative, or Survival)" ;;
     esac
+    set_config '.Defaults.GameMode' "$DEFAULT_GAME_MODE" string Defaults.GameMode
 fi
 
 # Validate final JSON before moving
