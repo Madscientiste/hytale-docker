@@ -52,8 +52,8 @@ setup_machine_id() {
     chmod 644 /data/machine-id 2>/dev/null || true
     printf '%s\n' "$id" > /etc/machine-id || error_exit "Failed to write /etc/machine-id"
     case "$source" in
-        new) log_info "Machine ID generated and saved to /data/machine-id: ${id}" ;;
-        *) log_info "Machine ID from ${source}: ${id}" ;;
+        new) log_info "Machine ID generated and saved to /data/machine-id" ;;
+        *) log_info "Machine ID from ${source}" ;;
     esac
 }
 

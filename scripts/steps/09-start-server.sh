@@ -23,10 +23,7 @@ if [ -z "${SESSION_TOKEN:-}" ] || [ -z "${IDENTITY_TOKEN:-}" ] || [ -z "${OWNER_
     error_exit "Authentication credentials not loaded. SESSION_TOKEN, IDENTITY_TOKEN, and OWNER_UUID must be set."
 fi
 
-log_info "Server will use authentication credentials from step 4"
-log_info "On first start, the server will automatically generate an encrypted credentials store: auth.enc"
-log_info "  This file enables the server to persist session tokens and maintain authentication while running."
-log_info "  Note: If the container is restarted and tokens have expired, you may need to re-authenticate to obtain a fresh token."
+log_info "Server will use the Hytale login loaded in step 5 (refreshed automatically, see docs/authentication.md)"
 
 # Build JVM arguments from environment variables
 INIT_MEMORY="${INIT_MEMORY:-12G}"

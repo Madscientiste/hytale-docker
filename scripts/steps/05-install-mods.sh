@@ -40,9 +40,14 @@ for url in $(echo "$MODS" | tr ',' ' '); do
     esac
 
     name=$(file_name_from_url "$url")
-    if ! printf '%s' "$name" | grep -qE '^[A-Za-z0-9][A-Za-z0-9._+-]*\.(jar|zip)$'; then
-        error_exit "MODS: cannot tell the mod file name from $url (expected a link ending in a .jar or .zip file)"
-    fi
+    case "$name" in
+        [A-Za-z0-9]*.jar|[A-Za-z0-9]*.zip) ;;
+        *) name="" ;;
+    esac
+    case "$name" in
+        ""|*[!A-Za-z0-9._+-]*)
+            error_exit "MODS: cannot tell the mod file name from $url (expected a link ending in a .jar or .zip file)" ;;
+    esac
 
     echo "$name $url" >> "$NEW_LIST"
     COUNT=$((COUNT + 1))
