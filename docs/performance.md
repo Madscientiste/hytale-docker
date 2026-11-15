@@ -57,7 +57,7 @@ These settings are optimized for server workloads and provide a good balance bet
 
 ### AOT Cache (faster startup)
 
-Hytale ships `HytaleServer.aot` next to the server jar: an ahead-of-time cache (JEP 514) that makes the server start faster. The container keeps it in `/data` when it downloads the server, and adds `-XX:AOTCache=HytaleServer.aot` when the file is there.
+Some Hytale downloads include `HytaleServer.aot` next to the server jar: an ahead-of-time cache (JEP 514) that makes the server start faster. When a download has one, the container keeps it in `/data` and adds `-XX:AOTCache=HytaleServer.aot`. Without the file (the 0.7.7 release has none), the server starts normally.
 
 The cache only works with the exact jar and Java version it was built for. If they don't match, Java prints a warning and starts normally without it.
 
