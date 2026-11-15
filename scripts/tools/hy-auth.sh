@@ -105,6 +105,21 @@ error_exit() {
     exit 1
 }
 
+# Run curl with one secret option (a token, a signed link) given on stdin as a
+# curl config (-K -), not on the command line: any user on the host can read
+# command lines with ps. $1: the option name (header, data, url), $2: its value,
+# then the other curl arguments. printf is a shell builtin, so it adds no
+# command line either.
+curl_secret() {
+    local option="$1" value="$2"
+    shift 2
+    case "$value" in
+        *'"'*|*\\*|*'
+'*) log_error "Refusing to pass a value with quotes, backslashes or line breaks to curl"; return 1 ;;
+    esac
+    printf '%s = "%s"\n' "$option" "$value" | curl -K - "$@"
+}
+
 # Check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -465,12 +480,11 @@ try_refresh_tokens() {
     
     # Request new tokens using refresh token
     local token_response
-    token_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
+    token_response=$(curl_secret data "refresh_token=$refresh_token" -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
-        -d "grant_type=refresh_token" \
-        -d "refresh_token=$refresh_token") || return 1
+        -d "grant_type=refresh_token") || return 1
     
     if echo "$token_response" | grep -q "\"error\""; then
         return 1
@@ -496,8 +510,7 @@ try_refresh_tokens() {
     
     # Get profiles with new access token
     local profiles_response
-    profiles_response=$(curl -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
-        -H "Authorization: Bearer $access_token" \
+    profiles_response=$(curl_secret header "Authorization: Bearer $access_token" -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
         -H "User-Agent: $USER_AGENT") || return 1
     
     if echo "$profiles_response" | grep -q "\"error\""; then
@@ -521,8 +534,7 @@ try_refresh_tokens() {
     
     # Create new game session
     local session_response
-    session_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
-        -H "Authorization: Bearer $access_token" \
+    session_response=$(curl_secret header "Authorization: Bearer $access_token" -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
         -H "Content-Type: application/json" \
         -H "User-Agent: $USER_AGENT" \
         -d "{\"uuid\": \"$profile_uuid\"}") || return 1
@@ -628,12 +640,11 @@ refresh_tokens() {
     
     # Request new tokens using refresh token
     local token_response
-    token_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
+    token_response=$(curl_secret data "refresh_token=$refresh_token" -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
-        -d "grant_type=refresh_token" \
-        -d "refresh_token=$refresh_token") || error_exit "Failed to refresh token"
+        -d "grant_type=refresh_token") || error_exit "Failed to refresh token"
     
     if echo "$token_response" | grep -q "\"error\""; then
         local error_msg=$(json_get "error" "$token_response")
@@ -663,8 +674,7 @@ refresh_tokens() {
     
     # Get profiles with new access token
     local profiles_response
-    profiles_response=$(curl -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
-        -H "Authorization: Bearer $access_token" \
+    profiles_response=$(curl_secret header "Authorization: Bearer $access_token" -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
         -H "User-Agent: $USER_AGENT") || error_exit "Failed to fetch profiles"
     
     if echo "$profiles_response" | grep -q "\"error\""; then
@@ -691,8 +701,7 @@ refresh_tokens() {
     
     # Create new game session
     local session_response
-    session_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
-        -H "Authorization: Bearer $access_token" \
+    session_response=$(curl_secret header "Authorization: Bearer $access_token" -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
         -H "Content-Type: application/json" \
         -H "User-Agent: $USER_AGENT" \
         -d "{\"uuid\": \"$profile_uuid\"}") || error_exit "Failed to create game session"
@@ -883,12 +892,11 @@ while [ $POLL_COUNT -lt $MAX_POLLS ]; do
         echo -n "."
     fi
     
-    TOKEN_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
+    TOKEN_RESPONSE=$(curl_secret data "device_code=$DEVICE_CODE" -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
-        -d "grant_type=urn:ietf:params:oauth:grant-type:device_code" \
-        -d "device_code=$DEVICE_CODE") || {
+        -d "grant_type=urn:ietf:params:oauth:grant-type:device_code") || {
         echo ""
         error_exit "Failed to poll token endpoint"
     }
@@ -932,8 +940,7 @@ fi
 
 # Step 4: Get Available Profiles
 log_step "4" "Fetching available profiles..."
-PROFILES_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" \
+PROFILES_RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
     -H "User-Agent: $USER_AGENT") || error_exit "Failed to fetch profiles"
 
 if echo "$PROFILES_RESPONSE" | grep -q "\"error\""; then
@@ -960,8 +967,7 @@ log_info "Found profile: $PROFILE_USERNAME ($PROFILE_UUID)"
 
 # Step 5: Create Game Session
 log_step "5" "Creating game session..."
-SESSION_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" \
+SESSION_RESPONSE=$(curl_secret header "Authorization: Bearer $ACCESS_TOKEN" -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
     -H "Content-Type: application/json" \
     -H "User-Agent: $USER_AGENT" \
     -d "{\"uuid\": \"$PROFILE_UUID\"}") || error_exit "Failed to create game session"
