@@ -51,8 +51,6 @@ services:
       - RCON_HOST=0.0.0.0  # Allow RCON access from host (default: 127.0.0.1 = container only)
     volumes:
       - "./data:/data"
-    tmpfs:
-      - /sys/class/dmi/id:rw,noexec,nosuid,size=1m  # Required for hardware UUID (Linux)
     ports:
       - "5520:5520/udp"   # Hytale UDP/QUIC
       - "25575:25575/tcp" # RCON TCP (requires RCON_HOST=0.0.0.0 to access from host)
