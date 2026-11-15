@@ -30,7 +30,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   hytale:
-    image: ghcr.io/madscientiste/hytale-server:latest
+    image: ghcr.io/madscientiste/hytale-docker:latest
     # Or build locally: build: .
     restart: unless-stopped
     container_name: hytale
