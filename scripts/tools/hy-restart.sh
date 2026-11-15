@@ -64,7 +64,12 @@ if [ "${CANCEL:-false}" = true ]; then
         [ -d "/proc/$pid" ] || { log_info "No restart is pending"; exit 0; }
         error_exit "Could not stop the pending restart (process $pid). Run hy-restart --cancel as the same user that started it, e.g. docker exec -u root"
     fi
-    rm -f "$HYTALE_RESTART_PENDING"
+    # Under the lock, and only while the marker is still the cancelled one: a
+    # new countdown may have claimed it in the meantime
+    exec 9< "$HYTALE_RUN_DIR"
+    flock 9 || error_exit "Cannot lock $HYTALE_RUN_DIR"
+    [ "$(cat "$HYTALE_RESTART_PENDING" 2>/dev/null)" = "$pid" ] && rm -f "$HYTALE_RESTART_PENDING"
+    exec 9<&-
     say "Server restart cancelled."
     log_success "Pending restart cancelled"
     exit 0
@@ -125,6 +130,8 @@ fi
 
 kill -0 "$SERVER_PID" 2>/dev/null || error_exit "The server stopped before the restart"
 
+# Too late to cancel: from here on the restart happens
+trap '' TERM INT
 # The supervisor sees this flag when the server exits and starts it again
 touch "$HYTALE_RESTART_FLAG"
 log_info "Restarting the server now${suffix}"
