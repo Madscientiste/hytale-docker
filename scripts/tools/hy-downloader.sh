@@ -749,7 +749,8 @@ elif [ -f "$TEMP_EXTRACT/Server/Assets.zip" ]; then
     TEMP_ASSETS="$TEMP_EXTRACT/Server/Assets.zip"
 fi
 
-# Optional AOT cache (JEP 514), shipped next to the jar since early 2026.
+# Optional AOT cache (JEP 514) next to the jar; not every release has one
+# (0.7.7 does not).
 # It speeds up startup and only matches the jar it was built for.
 TEMP_AOT=""
 if [ -n "$TEMP_JAR" ] && [ -f "$(dirname "$TEMP_JAR")/HytaleServer.aot" ]; then

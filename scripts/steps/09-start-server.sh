@@ -56,7 +56,7 @@ if [ -n "${JVM_XX_OPTS:-}" ]; then
     JVM_OPTS_BASE="$JVM_XX_OPTS $JVM_OPTS_BASE"
 fi
 
-# AOT cache shipped with the server: faster startup. If it does not match
+# AOT cache, when the download had one: faster startup. If it does not match
 # the jar or the JVM, Java prints a warning and starts normally without it.
 if [ -f "${HYTALE_DATA_DIR}/HytaleServer.aot" ]; then
     JVM_OPTS_BASE="-XX:AOTCache=HytaleServer.aot $JVM_OPTS_BASE"
