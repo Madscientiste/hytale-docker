@@ -249,6 +249,8 @@ show_version() {
 }
 
 # Validate version format
+# Hytale used date versions (2026.01.17-4b0f30090) until early 2026 and
+# numbered versions (0.7.7) since; both are accepted.
 # Returns: "LATEST", "FULL", "PARTIAL", or "INVALID"
 validate_version_format() {
     local version="$1"
@@ -265,6 +267,13 @@ validate_version_format() {
         return 0
     fi
     
+    # Numbered version: 0.7.7 (optionally with a suffix such as 0.7.7-rc1)
+    if echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$' && \
+       ! echo "$version" | grep -qE '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$'; then
+        echo "FULL"
+        return 0
+    fi
+
     # Check if it matches partial version format: YYYY.MM.DD (without hash)
     if echo "$version" | grep -qE '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}$'; then
         echo "PARTIAL"
@@ -498,7 +507,8 @@ Example: --server-version 2026.01.17-4b0f30090"
 
 Version must be either:
   - LATEST (default, downloads latest version)
-  - Full version with hash: YYYY.MM.DD-hash (e.g., 2026.01.17-4b0f30090)
+  - A numbered version (e.g., 0.7.7)
+  - A date version with hash: YYYY.MM.DD-hash (e.g., 2026.01.17-4b0f30090)
 
 Example: --server-version 2026.01.17-4b0f30090"
         ;;

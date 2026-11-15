@@ -44,7 +44,7 @@ hy-downloader [OPTIONS] --auth-file PATH --output-dir PATH
 - `--server-version VERSION`
   - Specify a specific server version to download
   - Default: `LATEST` (downloads the latest available version)
-  - Format must be: `YYYY.MM.DD-hash` (e.g., `2026.01.17-4b0f30090`)
+  - Format: a numbered version (e.g., `0.7.7`) or a date version with hash (e.g., `2026.01.17-4b0f30090`)
   - Partial versions (date only) are not supported
   - If version doesn't exist, returns 404 error with helpful message
 
@@ -287,7 +287,8 @@ hy-downloader -a ./auth.json -o ./server --simple-names -q
 ### Valid Formats
 
 - `LATEST` - Downloads latest available version
-- `YYYY.MM.DD-hash` - Full version with hash (e.g., `2026.01.17-4b0f30090`)
+- A numbered version (e.g., `0.7.7`), the format used since 2026
+- `YYYY.MM.DD-hash` - Date version with hash (e.g., `2026.01.17-4b0f30090`), used until early 2026
 
 ### Invalid Formats
 

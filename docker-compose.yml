@@ -16,7 +16,7 @@ services:
       - LOG_LEVEL=INFO # ERROR, WARN, INFO, DEBUG
 
       # Server Download
-      - VERSION=LATEST # or specific version like 2026.01.17-4b0f30090; note ommiting the hash will get the last build of that version 
+      - VERSION=LATEST # LATEST, or pin a version such as 0.7.7 (older date versions like 2026.01.17-4b0f30090 also work)
       - PATCHLINE=release # Patchline/branch (typically 'release' or 'pre-release')
       - FORCE_DOWNLOAD=false # Force re-download if true
 

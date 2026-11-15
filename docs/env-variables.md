@@ -91,25 +91,22 @@ LOG_LEVEL=DEBUG
 
 **Type:** String  
 **Default:** `LATEST`  
-**Description:** Hytale server version to download. Can be `LATEST` (downloads the latest available version) or a specific version string with hash (e.g., `2026.01.17-4b0f30090`).
+**Description:** Hytale server version to download. `LATEST` downloads the newest version and checks for updates on every start; any other value pins the server to that version and disables update checks.
 
 **Valid Values:**
 - `LATEST` - Downloads the latest version from the manifest (default)
-- `YYYY.MM.DD-hash` - Downloads a specific version (e.g., `2026.01.17-4b0f30090`)
+- A numbered version, the format Hytale uses since 2026 (e.g., `0.7.7`)
+- A date version with hash, the format used until early 2026 (e.g., `2026.01.17-4b0f30090`)
 
-**Version Format:**
-- Full version format: `YYYY.MM.DD-{hash}` where:
-  - `YYYY.MM.DD` is the date (e.g., `2026.01.17`)
-  - `{hash}` is the version hash (e.g., `4b0f30090`)
-- Partial versions (date only, without hash) are not supported and will result in an error
+A date without the hash (e.g., `2026.01.17`) is not supported and stops the container with an error.
 
 **Examples:**
 ```bash
 # Download latest version (default)
 VERSION=LATEST
 
-# Download specific version
-VERSION=2026.01.17-4b0f30090
+# Pin a specific version
+VERSION=0.7.7
 ```
 
 **Error Handling:**

@@ -65,8 +65,9 @@ get_current_version() {
     
     local version_output
     if version_output=$(java -jar "$FINAL_JAR" --version 2>/dev/null); then
-        # Extract version from: "HytaleServer v2026.01.17-4b0f30090 (release)"
-        local extracted_version=$(echo "$version_output" | sed -n 's/.* v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-[a-f0-9]*\) .*/\1/p')
+        # Extract version from "HytaleServer v0.7.7 (release)" (since 2026)
+        # or "HytaleServer v2026.01.17-4b0f30090 (release)" (January 2026)
+        local extracted_version=$(echo "$version_output" | sed -n 's/^HytaleServer v\([^ ]*\).*/\1/p' | tail -n 1)
         if [ -n "$extracted_version" ]; then
             echo "$extracted_version"
             return 0
@@ -80,8 +81,8 @@ get_current_version() {
 
 # Get latest available version using hy-downloader
 get_latest_version() {
-    local temp_auth="/tmp/auth-copy-$.json"
-    local temp_output="/tmp/hy-version-check-$.log"
+    local temp_auth="/tmp/auth-copy-$$.json"
+    local temp_output="/tmp/hy-version-check-$$.log"
     
     # Copy auth file to temporary location to avoid conflicts
     if ! cp "$AUTH_FILE" "$temp_auth" 2>/dev/null; then
