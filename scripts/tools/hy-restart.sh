@@ -58,7 +58,8 @@ say() {
 
 if [ "${CANCEL:-false}" = true ]; then
     pid=$(pending_pid) || { log_info "No restart is pending"; exit 0; }
-    kill "$pid" 2>/dev/null || true
+    # Fails when the countdown belongs to another user (e.g. started as root)
+    kill "$pid" 2>/dev/null || error_exit "Could not stop the pending restart (process $pid). Run hy-restart --cancel as the same user that started it, e.g. docker exec -u root"
     rm -f "$HYTALE_RESTART_PENDING"
     say "Server restart cancelled."
     log_success "Pending restart cancelled"
@@ -74,10 +75,16 @@ if pid=$(pending_pid); then
 fi
 
 mkdir -p "$HYTALE_RUN_DIR"
-# A stale marker (its process is gone) may belong to another user, e.g. root
-# from docker exec; removing it only needs write access to the folder
-rm -f "$HYTALE_RESTART_PENDING"
-echo $$ > "$HYTALE_RESTART_PENDING" || error_exit "Cannot write $HYTALE_RESTART_PENDING"
+# set -C: fail if the file exists, so of two hy-restart calls at once only one
+# counts down
+claim_marker() { ( set -C; echo $$ > "$HYTALE_RESTART_PENDING" ) 2>/dev/null; }
+if ! claim_marker; then
+    pending_pid >/dev/null && error_exit "A restart is already pending. Cancel it first with: hy-restart --cancel"
+    # A stale marker (its process is gone) may belong to another user, e.g.
+    # root from docker exec; removing it only needs write access to the folder
+    rm -f "$HYTALE_RESTART_PENDING"
+    claim_marker || error_exit "Cannot write $HYTALE_RESTART_PENDING"
+fi
 SLEEP_PID=""
 # Remove the marker only while it is still ours: a cancelled countdown must
 # not delete the marker of a newer one
@@ -116,5 +123,9 @@ kill -0 "$SERVER_PID" 2>/dev/null || error_exit "The server stopped before the r
 # The supervisor sees this flag when the server exits and starts it again
 touch "$HYTALE_RESTART_FLAG"
 log_info "Restarting the server now${suffix}"
-kill -TERM "$SERVER_PID" || error_exit "Failed to stop the server"
+if ! kill -TERM "$SERVER_PID"; then
+    # Without this, the next crash would look like a requested restart
+    rm -f "$HYTALE_RESTART_FLAG"
+    error_exit "Failed to stop the server"
+fi
 log_success "Restart started. Follow it with: docker logs -f <container>"
