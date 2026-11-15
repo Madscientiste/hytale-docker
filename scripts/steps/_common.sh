@@ -117,7 +117,8 @@ check_prerequisites() {
 
 # =============================================================================
 # Runtime state shared by the supervisor (00-entrypoint.sh), hy-restart and
-# hy-scheduler. Lives in /tmp so it never survives a container restart.
+# hy-scheduler. Lives in /tmp; /tmp survives `docker restart`, so the
+# entrypoint clears these files on every start.
 # =============================================================================
 HYTALE_RUN_DIR="/tmp/hytale"
 HYTALE_PID_FILE="${HYTALE_RUN_DIR}/server.pid"

@@ -11,7 +11,7 @@ log_section "Hytale Server Startup"
 
 # Runtime state shared with hy-restart and hy-scheduler (see _common.sh)
 mkdir -p "$HYTALE_RUN_DIR"
-rm -f "$HYTALE_PID_FILE" "$HYTALE_RESTART_FLAG" "$HYTALE_STATE_FILE"
+rm -f "$HYTALE_PID_FILE" "$HYTALE_RESTART_FLAG" "$HYTALE_RESTART_PENDING" "$HYTALE_STATE_FILE"
 
 # Supervisor: the container stays up while the game server restarts inside it.
 # A restart requested with hy-restart runs the startup steps again (so a new
