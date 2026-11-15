@@ -58,7 +58,7 @@ for url in $(echo "$MODS" | tr ',' ' '); do
     fi
 
     log_info "Downloading mod: $name"
-    if curl -fsSL --retry 3 -o "${MODS_DIR}/.${name}.part" "$url"; then
+    if curl -fsSL --retry 3 --connect-timeout 15 --speed-limit 1024 --speed-time 60 -o "${MODS_DIR}/.${name}.part" "$url"; then
         mv -f "${MODS_DIR}/.${name}.part" "${MODS_DIR}/${name}"
         log_success "Installed mod: $name"
     else
