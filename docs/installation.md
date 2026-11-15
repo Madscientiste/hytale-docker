@@ -9,7 +9,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   hytale:
-    image: ghcr.io/madscientiste/hytale-server:latest
+    image: ghcr.io/madscientiste/hytale-docker:latest
     restart: unless-stopped
     container_name: hytale
     tty: true
@@ -70,11 +70,11 @@ docker compose logs -f hytale
 Images are automatically built and published to GitHub Container Registry:
 
 ```bash
-docker pull ghcr.io/madscientiste/hytale-server:latest
+docker pull ghcr.io/madscientiste/hytale-docker:latest
 docker run -it --rm \
   -v $(pwd)/data:/data \
   -p 5520:5520/udp \
-  ghcr.io/madscientiste/hytale-server:latest
+  ghcr.io/madscientiste/hytale-docker:latest
 ```
 
 ## Building Locally
