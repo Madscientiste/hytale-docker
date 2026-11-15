@@ -114,3 +114,28 @@ check_prerequisites() {
         error_exit "Missing $missing required prerequisite(s)"
     fi
 }
+
+# =============================================================================
+# Runtime state shared by the supervisor (00-entrypoint.sh), hy-restart and
+# hy-scheduler. Lives in /tmp so it never survives a container restart.
+# =============================================================================
+HYTALE_RUN_DIR="/tmp/hytale"
+HYTALE_PID_FILE="${HYTALE_RUN_DIR}/server.pid"
+HYTALE_RESTART_FLAG="${HYTALE_RUN_DIR}/restart-requested"
+HYTALE_RESTART_PENDING="${HYTALE_RUN_DIR}/restart-pending"
+
+# Run a command while holding the auth lock. Hytale rotates the refresh token
+# on every use, so two refreshes at once would invalidate each other.
+with_auth_lock() {
+    flock /data/.auth.lock "$@"
+}
+
+# Send one command to the server over RCON. Fails when RCON is off or no
+# plaintext password is known. rcon-cli reads RCON_PASSWORD from the environment.
+rcon_command() {
+    [ "${RCON_ENABLED:-true}" = "true" ] || return 1
+    [ -n "${RCON_PASSWORD:-}" ] || return 1
+    echo "${RCON_PASSWORD}" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$' && return 1
+    RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="${RCON_PASSWORD}" \
+        rcon-cli "$@"
+}

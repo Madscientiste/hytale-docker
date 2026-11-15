@@ -20,6 +20,12 @@ services:
       - PATCHLINE=release # Patchline/branch (typically 'release' or 'pre-release')
       - FORCE_DOWNLOAD=false # Force re-download if true
 
+      # Restarts (docker exec hytale hy-restart works in every mode)
+      - RESTART_MODE=off # off | schedule (daily at RESTART_TIME) | on-update (when a new version is out)
+      - RESTART_TIME=04:00 # Daily restart time for RESTART_MODE=schedule (HH:MM, time zone TZ)
+      - RESTART_WARN_MINUTES=5 # Warn players this many minutes before a restart
+      - TZ=UTC # Container time zone
+
       # Server Configuration
       - SERVER_NAME=My Hytale Server # Server name displayed to players
       - MOTD=Welcome to our Hytale server! # Message of the day

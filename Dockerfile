@@ -48,7 +48,8 @@ COPY scripts/steps/* /init-container/
 COPY scripts/tools/* /usr/local/bin/
 RUN chmod +x /init-container/* && \
     chmod +x /usr/local/bin/* && \
-    ln -sf /usr/local/bin/gen-psswd.sh /usr/local/bin/gen-psswd
+    ln -sf /usr/local/bin/gen-psswd.sh /usr/local/bin/gen-psswd && \
+    ln -sf /usr/local/bin/hy-restart.sh /usr/local/bin/hy-restart
 
 VOLUME ["/data"]
 WORKDIR /data
