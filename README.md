@@ -66,7 +66,12 @@ docker compose logs -f  # Watch for authentication prompt on first run
 
 **First run:** The server will prompt you to authenticate via browser. Follow the URL and enter the code shown in the logs. See the [Authentication Guide](docs/authentication.md) for details.
 
-**Configuration:** See [Environment Variables](docs/env-variables.md) for all available options.
+**Configuration:** When you use this repository's `docker-compose.yml`, keep your settings in a `.env` file instead of editing the compose file:
+```bash
+cp .env.example .env   # then edit .env (change RCON_PASSWORD!)
+docker compose up -d   # apply changes
+```
+`.env` is ignored by git, so your passwords stay local. See [Environment Variables](docs/env-variables.md) for all options.
 
 ### Updating Your Server
 
