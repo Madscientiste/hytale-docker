@@ -107,7 +107,7 @@ What else changes when you update:
 - **Four recommended plugins are installed** (web server, Query, metrics, PerformanceSaver). PerformanceSaver lowers the tick rate and view radius when the server is under load. Turn any of them off with `ENABLE_WEBSERVER=false`, `ENABLE_QUERY=false`, `ENABLE_METRICS=false` or `ENABLE_PERFORMANCE_SAVER=false`. See [Recommended plugins](docs/env-variables.md#recommended-plugins).
 - **An empty `RCON_PASSWORD` now means a random password**, not "no password".
 - **The image has a health check**, shown as `healthy` or `unhealthy` in `docker ps`.
-- **A pinned `VERSION` is not downloaded over an installed server.** Start once with `FORCE_DOWNLOAD=true` to switch versions.
+- **A pinned `VERSION` now warns when another version is installed.** As before, it is not downloaded over an installed server: start once with `FORCE_DOWNLOAD=true` to switch versions.
 - **Still on a January 2026 server build?** The RCON plugin this image installs (1.1.1) was built for both, but was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
 
 ## Documentation
