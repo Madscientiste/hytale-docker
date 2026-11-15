@@ -294,6 +294,13 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
     if echo "$EXISTING_CONFIG" | jq empty 2>/dev/null; then
         # Merge: environment variables override existing config
         RCON_CONFIG_JSON=$(echo "$EXISTING_CONFIG" | jq --argjson new_config "$RCON_CONFIG_JSON" '. + $new_config')
+        # Newer plugin versions keep RCON off when the file has a key they do
+        # not know; keys added by hand are kept, so only warn
+        UNKNOWN_KEYS=$(echo "$RCON_CONFIG_JSON" | jq -r '[keys[] | select(IN("host", "port",
+            "maxConnections", "maxFrameSize", "readTimeoutMs", "connectionTimeoutMs", "passwordHash",
+            "maxConnectionsPerIp", "authTimeoutMs", "authMaxFailures", "authFailureWindowMs",
+            "authBanMs") | not)] | join(", ")')
+        [ -z "$UNKNOWN_KEYS" ] || log_warn "$RCON_CONFIG_FILE has keys the RCON plugin may not know: ${UNKNOWN_KEYS}. If RCON does not start, remove them."
     else
         log_warn "Existing config file is invalid JSON, creating new one"
     fi
