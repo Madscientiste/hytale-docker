@@ -57,21 +57,25 @@ say() {
 }
 
 if [ "${CANCEL:-false}" = true ]; then
-    pid=$(pending_pid) || { log_info "No restart is pending"; exit 0; }
+    [ -d "$HYTALE_RUN_DIR" ] || { log_info "No restart is pending"; exit 0; }
+    # Under the lock. The countdown takes the same lock when it commits to the
+    # restart, and removes its marker then; so a marker seen here can still be
+    # cancelled, and TERM sent now stops the countdown before it commits.
+    exec 9< "$HYTALE_RUN_DIR"
+    flock 9 || error_exit "Cannot lock $HYTALE_RUN_DIR"
+    if ! pid=$(pending_pid); then
+        if [ -f "$HYTALE_RESTART_FLAG" ]; then
+            error_exit "Too late to cancel: the restart has already begun"
+        fi
+        log_info "No restart is pending"
+        exit 0
+    fi
     # Fails when the countdown belongs to another user (e.g. started as root),
     # or when it just ended by itself
     if ! kill "$pid" 2>/dev/null; then
         [ -d "/proc/$pid" ] || { log_info "No restart is pending"; exit 0; }
         error_exit "Could not stop the pending restart (process $pid). Run hy-restart --cancel as the same user that started it, e.g. docker exec -u root"
     fi
-    # The countdown ignores TERM once the restart has begun
-    if [ -f "$HYTALE_RESTART_FLAG" ] && [ -d "/proc/$pid" ]; then
-        error_exit "Too late to cancel: the restart has already begun"
-    fi
-    # Under the lock, and only while the marker is still the cancelled one: a
-    # new countdown may have claimed it in the meantime
-    exec 9< "$HYTALE_RUN_DIR"
-    flock 9 || error_exit "Cannot lock $HYTALE_RUN_DIR"
     [ "$(cat "$HYTALE_RESTART_PENDING" 2>/dev/null)" = "$pid" ] && rm -f "$HYTALE_RESTART_PENDING"
     exec 9<&-
     say "Server restart cancelled."
@@ -93,6 +97,8 @@ mkdir -p "$HYTALE_RUN_DIR"
 exec 9< "$HYTALE_RUN_DIR"
 flock 9 || error_exit "Cannot lock $HYTALE_RUN_DIR"
 pending_pid >/dev/null && error_exit "A restart is already pending. Cancel it first with: hy-restart --cancel"
+# Set until the supervisor has seen the server stop
+[ -f "$HYTALE_RESTART_FLAG" ] && error_exit "A restart is already under way"
 # A stale marker (its process is gone) may belong to another user, e.g. root
 # from docker exec; removing it only needs write access to the folder
 rm -f "$HYTALE_RESTART_PENDING"
@@ -134,10 +140,16 @@ fi
 
 kill -0 "$SERVER_PID" 2>/dev/null || error_exit "The server stopped before the restart"
 
-# Too late to cancel: from here on the restart happens
+# Commit to the restart under the lock (see --cancel). A TERM that a cancel
+# sent while we waited for the lock runs its trap as soon as flock returns,
+# before the next line.
+exec 9< "$HYTALE_RUN_DIR"
+flock 9 || error_exit "Cannot lock $HYTALE_RUN_DIR"
 trap '' TERM INT
+rm -f "$HYTALE_RESTART_PENDING"
 # The supervisor sees this flag when the server exits and starts it again
 touch "$HYTALE_RESTART_FLAG"
+exec 9<&-
 log_info "Restarting the server now${suffix}"
 if ! kill -TERM "$SERVER_PID"; then
     # Without this, the next crash would look like a requested restart
