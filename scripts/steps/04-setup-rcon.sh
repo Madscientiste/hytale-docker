@@ -58,24 +58,28 @@ RELEASE_TAG=""
 VERSION_NUMBER=""
 if [ "$RCON_VERSION" = "latest" ]; then
     log_step "1" "Fetching latest RCON plugin version from GitHub"
-    LATEST_RELEASE=$(curl -sf "${GITHUB_API}/releases/latest" 2>&1)
+    LATEST_RELEASE=$(curl -sf --connect-timeout 15 --max-time 30 "${GITHUB_API}/releases/latest" 2>&1)
     CURL_EXIT=$?
-    
-    if [ $CURL_EXIT -ne 0 ] || [ -z "$LATEST_RELEASE" ]; then
-        log_error "Failed to fetch latest release from GitHub API"
+    RELEASE_TAG=""
+    if [ $CURL_EXIT -eq 0 ] && [ -n "$LATEST_RELEASE" ]; then
+        RELEASE_TAG=$(echo "$LATEST_RELEASE" | jq -r '.tag_name // empty' 2>/dev/null)
+    fi
+    [ "$RELEASE_TAG" = "null" ] && RELEASE_TAG=""
+
+    if [ -n "$RELEASE_TAG" ]; then
+        log_success "Latest release tag: $RELEASE_TAG"
+    else
         log_debug "curl exit code: $CURL_EXIT"
         log_debug "Response: $LATEST_RELEASE"
-        error_exit "Failed to fetch latest release from GitHub API. Check network connectivity and GitHub API status."
+        # GitHub down or rate-limited: keep the plugin already installed, so a
+        # restart does not fail because of GitHub
+        INSTALLED_JAR=$(ls "$MODS_DIR" 2>/dev/null | grep -E '^rcon-[0-9][0-9A-Za-z.+-]*\.jar$' | sort -V | tail -n 1)
+        if [ -z "$INSTALLED_JAR" ]; then
+            error_exit "Failed to fetch the latest RCON release from GitHub. Check network connectivity and GitHub API status, or set RCON_VERSION."
+        fi
+        log_warn "Could not check GitHub for a newer RCON plugin; keeping ${INSTALLED_JAR}"
+        RELEASE_TAG="${INSTALLED_JAR%.jar}"
     fi
-    
-    # Use jq to parse JSON response
-    RELEASE_TAG=$(echo "$LATEST_RELEASE" | jq -r '.tag_name // empty' 2>/dev/null)
-    if [ -z "$RELEASE_TAG" ] || [ "$RELEASE_TAG" = "null" ]; then
-        log_error "Could not extract version from GitHub API response"
-        log_debug "API Response: $LATEST_RELEASE"
-        error_exit "Could not extract version from GitHub API response. The API may have returned an error or unexpected format."
-    fi
-    log_success "Latest release tag: $RELEASE_TAG"
 else
     # Use provided version as tag (may be full tag like "rcon-v1.1.0" or just version like "1.1.0")
     RELEASE_TAG="$RCON_VERSION"
@@ -119,10 +123,13 @@ if [ -f "$PLUGIN_PATH" ]; then
     log_info "Plugin already exists at $PLUGIN_PATH, skipping download"
     log_debug "Set FORCE_DOWNLOAD=true or remove the file to force re-download"
 else
-    if curl -L --progress-bar -o "$PLUGIN_PATH" "$DOWNLOAD_URL"; then
+    # -f: a 404 page must not become rcon-x.jar; .part: no half-written jar
+    if curl -fL --retry 3 --connect-timeout 15 --max-time 120 --progress-bar -o "${PLUGIN_PATH}.part" "$DOWNLOAD_URL" &&
+        mv -f "${PLUGIN_PATH}.part" "$PLUGIN_PATH"; then
         FILE_SIZE=$(du -h "$PLUGIN_PATH" | cut -f1)
         log_success "Download complete! File size: $FILE_SIZE"
     else
+        rm -f "${PLUGIN_PATH}.part"
         error_exit "Failed to download RCON plugin from $DOWNLOAD_URL"
     fi
     
@@ -130,6 +137,15 @@ else
         error_exit "Downloaded plugin not found at $PLUGIN_PATH"
     fi
 fi
+
+# Only one RCON plugin may load: set other versions aside (outside mods/, where
+# the server ignores them) instead of deleting them
+for OLD_JAR in $(ls "$MODS_DIR" 2>/dev/null | grep -E '^rcon-[0-9][0-9A-Za-z.+-]*\.jar$'); do
+    [ "$OLD_JAR" = "$PLUGIN_JAR" ] && continue
+    mkdir -p "${HYTALE_DATA_DIR}/.disabled-plugins"
+    mv -f "${MODS_DIR}/${OLD_JAR}" "${HYTALE_DATA_DIR}/.disabled-plugins/${OLD_JAR}" &&
+        log_info "Moved older RCON plugin ${OLD_JAR} to ${HYTALE_DATA_DIR}/.disabled-plugins"
+done
 
 # Create symlink to RCON JAR in /data/.bin for easy access by utility scripts
 log_step "3" "Creating RCON JAR symlink"
