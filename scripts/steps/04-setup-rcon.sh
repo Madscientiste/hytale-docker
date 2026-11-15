@@ -246,18 +246,24 @@ fi
 log_step "5" "Configuring RCON plugin"
 
 # Build RCON configuration JSON
-RCON_CONFIG_JSON="{}"
-RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".host = \"$RCON_HOST\"")
-RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".port = ($RCON_PORT | tonumber)")
-RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".maxConnections = ($RCON_MAX_CONNECTIONS | tonumber)")
-RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".maxFrameSize = ($RCON_MAX_FRAME_SIZE | tonumber)")
-RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".readTimeoutMs = ($RCON_READ_TIMEOUT_MS | tonumber)")
-RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".connectionTimeoutMs = ($RCON_CONNECTION_TIMEOUT_MS | tonumber)")
+for n in RCON_PORT RCON_MAX_CONNECTIONS RCON_MAX_FRAME_SIZE RCON_READ_TIMEOUT_MS RCON_CONNECTION_TIMEOUT_MS; do
+    eval "v=\${$n}"
+    echo "$v" | grep -qE '^[0-9]+$' || error_exit "$n must be a positive integer, got: $v"
+done
 
-# Add password hash if available
-if [ -n "$PASSWORD_HASH" ]; then
-    RCON_CONFIG_JSON=$(echo "$RCON_CONFIG_JSON" | jq ".passwordHash = \"$PASSWORD_HASH\"")
-fi
+# Values are passed to jq as data, never pasted into the filter
+RCON_CONFIG_JSON=$(jq -n \
+    --arg host "$RCON_HOST" \
+    --argjson port "$RCON_PORT" \
+    --argjson maxConnections "$RCON_MAX_CONNECTIONS" \
+    --argjson maxFrameSize "$RCON_MAX_FRAME_SIZE" \
+    --argjson readTimeoutMs "$RCON_READ_TIMEOUT_MS" \
+    --argjson connectionTimeoutMs "$RCON_CONNECTION_TIMEOUT_MS" \
+    --arg passwordHash "$PASSWORD_HASH" \
+    '{host: $host, port: $port, maxConnections: $maxConnections, maxFrameSize: $maxFrameSize,
+      readTimeoutMs: $readTimeoutMs, connectionTimeoutMs: $connectionTimeoutMs}
+     + (if $passwordHash != "" then {passwordHash: $passwordHash} else {} end)') \
+    || error_exit "Failed to build RCON configuration"
 
 # If config file exists, merge with existing settings (preserve user customizations)
 if [ -f "$RCON_CONFIG_FILE" ]; then
@@ -308,11 +314,15 @@ fi
 # Create the config file
 # Include plaintext password only if we have it (for rcon-cli to work)
 if [ -n "$PLAINTEXT_PASSWORD" ]; then
-    cat > "$RCON_CLI_CONFIG" << EOF
-host: ${RCON_HOST}
+    # YAML single-quoted string: only ' needs escaping (as ''), everything else is literal
+    YAML_PASSWORD=$(printf '%s' "$PLAINTEXT_PASSWORD" | sed "s/'/''/g")
+    # umask 077 so the file is never readable by others, not even briefly
+    (umask 077 && cat > "$RCON_CLI_CONFIG" << EOF
+host: '${RCON_HOST}'
 port: ${RCON_PORT}
-password: ${PLAINTEXT_PASSWORD}
+password: '${YAML_PASSWORD}'
 EOF
+    )
     if [ -f "$RCON_CLI_CONFIG" ]; then
         chmod 600 "$RCON_CLI_CONFIG" || log_warn "Failed to set permissions on $RCON_CLI_CONFIG"
         log_success "rcon-cli configuration created at $RCON_CLI_CONFIG"
