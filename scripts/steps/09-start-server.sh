@@ -79,14 +79,19 @@ fi
 # Change to data directory
 cd "${HYTALE_DATA_DIR}"
 
+# Hand the tokens to the server through the environment variables it reads
+# when --session-token/--identity-token are absent. Command-line arguments are
+# visible to every user on the host (ps, /proc/*/cmdline); the environment is not.
+export HYTALE_SERVER_SESSION_TOKEN="$SESSION_TOKEN"
+export HYTALE_SERVER_IDENTITY_TOKEN="$IDENTITY_TOKEN"
+unset SESSION_TOKEN IDENTITY_TOKEN
+
 # Start server with authentication
 log_info "Starting Hytale server..."
 if [ "$ENABLE_BACKUPS" = "true" ]; then
     exec java $JVM_OPTS_BASE \
         -jar HytaleServer.jar \
         --assets Assets.zip \
-        --session-token "$SESSION_TOKEN" \
-        --identity-token "$IDENTITY_TOKEN" \
         --owner-uuid "$OWNER_UUID" \
         ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
         ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
@@ -100,8 +105,6 @@ else
     exec java $JVM_OPTS_BASE \
         -jar HytaleServer.jar \
         --assets Assets.zip \
-        --session-token "$SESSION_TOKEN" \
-        --identity-token "$IDENTITY_TOKEN" \
         --owner-uuid "$OWNER_UUID" \
         ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
         ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
