@@ -554,7 +554,7 @@ if [ "$VERSION" = "LATEST" ]; then
     log_step "1" "Getting version manifest for patchline: $PATCHLINE"
     MANIFEST_URL="${API_BASE}/game-assets/version/${PATCHLINE}.json"
     
-    RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+    RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
         -H "Authorization: Bearer $ACCESS_TOKEN" \
         "$MANIFEST_URL" 2>&1)
     
@@ -579,7 +579,7 @@ if [ "$VERSION" = "LATEST" ]; then
     log_success "Got signed manifest URL"
     
     log_step "2" "Fetching manifest content..."
-    MANIFEST=$(curl -s "$SIGNED_MANIFEST_URL") || error_exit "Failed to fetch manifest"
+    MANIFEST=$(curl -s --connect-timeout 15 --max-time 60 "$SIGNED_MANIFEST_URL") || error_exit "Failed to fetch manifest"
     
     # Parse manifest JSON
     if [ "$USE_JQ" = true ]; then
@@ -663,7 +663,7 @@ fi
 log_step "3" "Getting signed download URL..."
 DOWNLOAD_URL_ENDPOINT="${API_BASE}/game-assets/${DOWNLOAD_PATH}"
 
-DOWNLOAD_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+DOWNLOAD_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -w "\nHTTP_CODE:%{http_code}" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     "$DOWNLOAD_URL_ENDPOINT" 2>&1)
 
@@ -700,7 +700,8 @@ log_info "Output: $TEMP_DOWNLOAD"
 log_info "This may take a while..."
 
 # Download with progress
-if curl -L --progress-bar -o "$TEMP_DOWNLOAD" "$SIGNED_DOWNLOAD_URL"; then
+# Abort a stalled download (under 1 KB/s for a minute) instead of hanging
+if curl -L --connect-timeout 15 --speed-limit 1024 --speed-time 60 --progress-bar -o "$TEMP_DOWNLOAD" "$SIGNED_DOWNLOAD_URL"; then
     FILE_SIZE=$(du -h "$TEMP_DOWNLOAD" | cut -f1)
     log_success "Download complete! File size: $FILE_SIZE"
 else

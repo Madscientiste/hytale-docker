@@ -59,7 +59,7 @@ set_managed() {
 
 # Direct link to the newest release jar built for $SERVER_VERSION
 find_jar_url() {
-    curl -fsSL -H "Accept: application/vnd.github+json" \
+    curl -fsSL --connect-timeout 15 --max-time 60 -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/$1/releases?per_page=20" 2>/dev/null \
         | jq -r --arg suffix "+${SERVER_VERSION}.jar" \
             '[.[] | select(.draft | not) | select(.prerelease | not) | .assets[]
@@ -120,7 +120,7 @@ echo "$PLUGINS" | while IFS='|' read -r key repo prefix setting; do
 
     file=$(basename "$url" | sed 's/%2[Bb]/+/g')
     log_info "Downloading ${file}"
-    if ! curl -fsSL --retry 3 -o "${MODS_DIR}/.${file}.part" "$url"; then
+    if ! curl -fsSL --retry 3 --connect-timeout 15 --speed-limit 1024 --speed-time 60 -o "${MODS_DIR}/.${file}.part" "$url"; then
         rm -f "${MODS_DIR}/.${file}.part"
         log_warn "Failed to download ${file}; skipping ${key}"
         [ -n "$current" ] && disable_managed "$current" "built for another server version"
