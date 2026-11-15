@@ -39,6 +39,7 @@ while [ $# -gt 0 ]; do
 done
 
 echo "$MINUTES" | grep -qE '^[0-9]+$' || error_exit "Minutes must be a whole number, got: $MINUTES"
+MINUTES=$(echo "$MINUTES" | sed 's/^0*\([0-9]\)/\1/')   # "08" is not octal
 
 pending_pid() {
     [ -f "$HYTALE_RESTART_PENDING" ] || return 1
@@ -74,8 +75,20 @@ fi
 
 mkdir -p "$HYTALE_RUN_DIR"
 echo $$ > "$HYTALE_RESTART_PENDING"
-trap 'rm -f "$HYTALE_RESTART_PENDING"' EXIT
+SLEEP_PID=""
+# Remove the marker only while it is still ours: a cancelled countdown must
+# not delete the marker of a newer one
+trap '[ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null; [ "$(cat "$HYTALE_RESTART_PENDING" 2>/dev/null)" = "$$" ] && rm -f "$HYTALE_RESTART_PENDING"' EXIT
 trap 'exit 130' TERM INT
+
+# Sleep in the background so --cancel (SIGTERM) stops the countdown at once;
+# the shell only runs traps between commands, not during a foreground sleep
+pause() {
+    sleep "$1" &
+    SLEEP_PID=$!
+    wait "$SLEEP_PID"
+    SLEEP_PID=""
+}
 
 suffix=""
 [ -n "$REASON" ] && suffix=" ($REASON)"
@@ -86,13 +99,13 @@ if [ "$remaining" -gt 0 ]; then
     log_info "Restarting in ${MINUTES} minute(s)${suffix}. Cancel with: hy-restart --cancel"
     say "Server restarting in ${MINUTES} minute(s)${suffix}."
     if [ "$remaining" -gt 60 ]; then
-        sleep $((remaining - 60))
+        pause $((remaining - 60))
         say "Server restarting in 1 minute${suffix}."
         remaining=60
     fi
-    sleep $((remaining - 10))
+    pause $((remaining - 10))
     say "Server restarting in 10 seconds${suffix}."
-    sleep 10
+    pause 10
 fi
 
 kill -0 "$SERVER_PID" 2>/dev/null || error_exit "The server stopped before the restart"
