@@ -1,8 +1,11 @@
 # Build stage: Build rcon-cli from source
 FROM golang:1.27-alpine AS rcon-cli-builder
 
+# Pinned: itzg/rcon-cli tag 1.7.9. Its tags have no "v", so Go cannot resolve
+# them as versions and "@latest" would build whatever the main branch holds.
+ARG RCON_CLI_COMMIT=84dadd478472579757df35909e9d24e65593e0ad
 RUN apk add --no-cache git && \
-    go install github.com/itzg/rcon-cli@latest && \
+    go install github.com/itzg/rcon-cli@${RCON_CLI_COMMIT} && \
     cp /go/bin/rcon-cli /usr/local/bin/rcon-cli
 
 # Final stage: Hytale server image
@@ -32,12 +35,14 @@ RUN apk add --no-cache \
     libgcc \
     libstdc++ \
     util-linux \
+    openssl \
     gcompat
 
-# Copy rcon-cli from build stage
-COPY --from=rcon-cli-builder /usr/local/bin/rcon-cli /usr/local/bin/rcon-cli
-RUN chmod +x /usr/local/bin/rcon-cli && \
-    rcon-cli --help > /dev/null && \
+# Copy rcon-cli from build stage; /usr/local/bin/rcon-cli is a wrapper that
+# finds the password (scripts/tools/rcon-cli.sh)
+COPY --from=rcon-cli-builder /usr/local/bin/rcon-cli /usr/local/lib/rcon-cli/rcon-cli
+RUN chmod +x /usr/local/lib/rcon-cli/rcon-cli && \
+    /usr/local/lib/rcon-cli/rcon-cli --help > /dev/null && \
     echo "rcon-cli installed successfully"
 
 # Create default hytale user (will be modified at runtime if HOST_UID/HOST_GID are set)
@@ -49,11 +54,12 @@ COPY scripts/tools/* /usr/local/bin/
 RUN chmod +x /init-container/* && \
     chmod +x /usr/local/bin/* && \
     ln -sf /usr/local/bin/gen-psswd.sh /usr/local/bin/gen-psswd && \
-    ln -sf /usr/local/bin/hy-restart.sh /usr/local/bin/hy-restart
+    ln -sf /usr/local/bin/hy-restart.sh /usr/local/bin/hy-restart && \
+    ln -sf /usr/local/bin/rcon-cli.sh /usr/local/bin/rcon-cli
 
 VOLUME ["/data"]
 WORKDIR /data
-EXPOSE 5520/udp 25575/tcp
+EXPOSE 5520/udp
 
 # Healthy while starting up (up to HEALTH_STARTUP_MINUTES) and while the server
 # runs and answers over RCON; see scripts/tools/hy-health.sh

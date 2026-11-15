@@ -15,7 +15,12 @@ check_prerequisites jq curl
 
 # RCON configuration from environment variables
 RCON_ENABLED="${RCON_ENABLED:-true}"
-RCON_VERSION="${RCON_VERSION:-latest}"
+# Empty: the plugin release this image was tested with, checked by sha256.
+# "latest" (newest release) or a tag such as "rcon-v1.1.0": not checked.
+RCON_VERSION="${RCON_VERSION:-}"
+RCON_PINNED_TAG="rcon-v1.1.0"
+RCON_PINNED_SHA256="bb7baec2f9dda95ab532c4d3223d8040180284706ba63047aaca5e6aafbb34e7"
+EXPECTED_SHA256=""
 RCON_HOST="${RCON_HOST:-127.0.0.1}"
 RCON_PORT="${RCON_PORT:-25575}"
 RCON_PASSWORD="${RCON_PASSWORD:-}"
@@ -29,10 +34,9 @@ RCON_CONNECTION_TIMEOUT_MS="${RCON_CONNECTION_TIMEOUT_MS:-5000}"
 GITHUB_REPO="Madscientiste/hytale-exp"
 GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}"
 
-# Check if a string looks like a password hash (base64:base64 format)
-is_password_hash() {
-    echo "$1" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
-}
+is_password_hash() { is_rcon_password_hash "$1"; }
+
+sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
 
 # Skip if RCON is disabled
 if [ "$RCON_ENABLED" != "true" ]; then
@@ -56,7 +60,11 @@ fi
 # Determine version to download
 RELEASE_TAG=""
 VERSION_NUMBER=""
-if [ "$RCON_VERSION" = "latest" ]; then
+if [ -z "$RCON_VERSION" ] || [ "$RCON_VERSION" = "$RCON_PINNED_TAG" ]; then
+    RELEASE_TAG="$RCON_PINNED_TAG"
+    EXPECTED_SHA256="$RCON_PINNED_SHA256"
+    log_info "Using the RCON plugin tested with this image: $RELEASE_TAG"
+elif [ "$RCON_VERSION" = "latest" ]; then
     log_step "1" "Fetching latest RCON plugin version from GitHub"
     LATEST_RELEASE=$(curl -sf --connect-timeout 15 --max-time 30 "${GITHUB_API}/releases/latest" 2>&1)
     CURL_EXIT=$?
@@ -118,13 +126,31 @@ log_step "2" "Downloading RCON plugin"
 log_info "URL: $DOWNLOAD_URL"
 log_info "Destination: $PLUGIN_PATH"
 
+# A pinned plugin must match its checksum, also when it is already installed
+if [ -f "$PLUGIN_PATH" ] && [ -n "$EXPECTED_SHA256" ] && [ "$(sha256_of "$PLUGIN_PATH")" != "$EXPECTED_SHA256" ]; then
+    mkdir -p "${HYTALE_DATA_DIR}/.disabled-plugins"
+    mv -f "$PLUGIN_PATH" "${HYTALE_DATA_DIR}/.disabled-plugins/${PLUGIN_JAR}.bad-checksum"
+    log_warn "Installed ${PLUGIN_JAR} does not match its checksum; moved to ${HYTALE_DATA_DIR}/.disabled-plugins and downloading it again"
+fi
+
 # Check if plugin already exists
 if [ -f "$PLUGIN_PATH" ]; then
     log_info "Plugin already exists at $PLUGIN_PATH, skipping download"
-    log_debug "Set FORCE_DOWNLOAD=true or remove the file to force re-download"
 else
+    rm -f "${PLUGIN_PATH}.part"   # leftover of an interrupted download
+    if [ -n "$EXPECTED_SHA256" ]; then
+        # Verify before the jar goes into mods/
+        curl -fL --retry 3 --connect-timeout 15 --max-time 120 -s -o "${PLUGIN_PATH}.part" "$DOWNLOAD_URL" ||
+            { rm -f "${PLUGIN_PATH}.part"; error_exit "Failed to download RCON plugin from $DOWNLOAD_URL"; }
+        GOT_SHA256=$(sha256_of "${PLUGIN_PATH}.part")
+        if [ "$GOT_SHA256" != "$EXPECTED_SHA256" ]; then
+            rm -f "${PLUGIN_PATH}.part"
+            error_exit "RCON plugin checksum mismatch for $DOWNLOAD_URL (expected $EXPECTED_SHA256, got $GOT_SHA256). Not installing it."
+        fi
+        log_success "Checksum verified (sha256 $EXPECTED_SHA256)"
+    fi
     # -f: a 404 page must not become rcon-x.jar; .part: no half-written jar
-    if curl -fL --retry 3 --connect-timeout 15 --max-time 120 --progress-bar -o "${PLUGIN_PATH}.part" "$DOWNLOAD_URL" &&
+    if { [ -f "${PLUGIN_PATH}.part" ] || curl -fL --retry 3 --connect-timeout 15 --max-time 120 --progress-bar -o "${PLUGIN_PATH}.part" "$DOWNLOAD_URL"; } &&
         mv -f "${PLUGIN_PATH}.part" "$PLUGIN_PATH"; then
         FILE_SIZE=$(du -h "$PLUGIN_PATH" | cut -f1)
         log_success "Download complete! File size: $FILE_SIZE"
@@ -144,7 +170,7 @@ for OLD_JAR in $(ls "$MODS_DIR" 2>/dev/null | grep -E '^rcon-[0-9][0-9A-Za-z.+-]
     [ "$OLD_JAR" = "$PLUGIN_JAR" ] && continue
     mkdir -p "${HYTALE_DATA_DIR}/.disabled-plugins"
     mv -f "${MODS_DIR}/${OLD_JAR}" "${HYTALE_DATA_DIR}/.disabled-plugins/${OLD_JAR}" &&
-        log_info "Moved older RCON plugin ${OLD_JAR} to ${HYTALE_DATA_DIR}/.disabled-plugins"
+        log_info "Moved other RCON plugin version ${OLD_JAR} to ${HYTALE_DATA_DIR}/.disabled-plugins"
 done
 
 # Create symlink to RCON JAR in /data/.bin for easy access by utility scripts
@@ -181,81 +207,43 @@ else
     log_warn "RCON plugin JAR not found, cannot create symlink"
 fi
 
-# 
-# FIXME: This is a workaround. Ideally, the mod itself should write the password hash into the config
-# so we don't have to generate and patch it here.
-# For now, this works, but this logic should move to the mod/plugin... good enough i guess ?
-# 
-# Determine the password hash to use
-# Priority: RCON_PASSWORD_HASH > RCON_PASSWORD (if already hash) > RCON_PASSWORD (needs hashing) > none
+# Password: RCON_PASSWORD_HASH > RCON_PASSWORD (plaintext or hash) > a random
+# password made once and kept in RCON_PASSWORD_FILE. The hash is computed in
+# the shell from stdin, so the password never shows on a command line.
 PASSWORD_HASH=""
 PLAINTEXT_PASSWORD=""
 
+log_step "4" "Setting the RCON password"
 if [ -n "$RCON_PASSWORD_HASH" ]; then
-    # Explicit hash provided - use it directly
     PASSWORD_HASH="$RCON_PASSWORD_HASH"
-    log_info "Using provided RCON_PASSWORD_HASH"
-    log_debug "Hash: ${PASSWORD_HASH:0:30}..."
-    
-    # Check if RCON_PASSWORD is also set (for rcon-cli)
-    if [ -n "$RCON_PASSWORD" ] && ! is_password_hash "$RCON_PASSWORD"; then
-        PLAINTEXT_PASSWORD="$RCON_PASSWORD"
-        log_debug "RCON_PASSWORD also provided (will be used for rcon-cli)"
-    fi
-elif [ -n "$RCON_PASSWORD" ]; then
-    # Check if RCON_PASSWORD is already a hash or plaintext
-    if is_password_hash "$RCON_PASSWORD"; then
-        log_info "RCON_PASSWORD is already hashed, using directly"
-        PASSWORD_HASH="$RCON_PASSWORD"
-        log_debug "Hash: ${PASSWORD_HASH:0:30}..."
-    else
-        # Plaintext password provided - need to hash it
-        log_step "4" "Generating password hash from plaintext"
-        PLAINTEXT_PASSWORD="$RCON_PASSWORD"
-        
-        # Verify plugin JAR exists before attempting to use it
-        if [ ! -f "$PLUGIN_PATH" ]; then
-            error_exit "Plugin JAR not found at $PLUGIN_PATH. Cannot generate password hash."
-        fi
-        
-        # Verify Java is available
-        if ! command_exists java; then
-            error_exit "Java is not available. Cannot generate password hash."
-        fi
-        
-        log_debug "Running: java -cp \"$PLUGIN_PATH\" com.madscientiste.rcon.infrastructure.AuthenticationService \"***\""
-        HASH_OUTPUT=$(java -cp "$PLUGIN_PATH" com.madscientiste.rcon.infrastructure.AuthenticationService "$RCON_PASSWORD" 2>&1)
-        JAVA_EXIT=$?
-        
-        log_debug "Java exit code: $JAVA_EXIT"
-        log_debug "Java output: ${HASH_OUTPUT:0:100}..."
-        
-        if [ $JAVA_EXIT -eq 0 ] && [ -n "$HASH_OUTPUT" ]; then
-            # Extract hash from stable output format: "Password hash: <hash>"
-            PASSWORD_HASH=$(echo "$HASH_OUTPUT" | sed -n 's/.*Password hash: \([^[:space:]]*\).*/\1/p' | head -1)
-            
-            # Validate hash format (should contain a colon and be non-empty)
-            if [ -n "$PASSWORD_HASH" ] && echo "$PASSWORD_HASH" | grep -q ':'; then
-                log_success "Password hash generated successfully"
-                log_debug "Hash: ${PASSWORD_HASH:0:30}..."
-            else
-                log_error "Could not extract password hash from output"
-                log_error "Java output: $HASH_OUTPUT"
-                error_exit "Failed to extract password hash from Java output. Expected format: 'Password hash: <hash>'"
-            fi
-        else
-            log_error "Failed to generate password hash using plugin JAR"
-            log_error "Java exit code: $JAVA_EXIT"
-            log_error "Output: $HASH_OUTPUT"
-            error_exit "Failed to generate password hash for RCON_PASSWORD. Cannot start server without proper authentication configuration."
-        fi
-    fi
+    log_info "Using RCON_PASSWORD_HASH"
+    PLAINTEXT_PASSWORD=$(rcon_plain_password 2>/dev/null) || PLAINTEXT_PASSWORD=""
+elif [ -n "$RCON_PASSWORD" ] && is_password_hash "$RCON_PASSWORD"; then
+    PASSWORD_HASH="$RCON_PASSWORD"
+    log_info "RCON_PASSWORD is already a hash, using it directly"
 else
-    # No password or hash provided
-    log_info "No RCON password or password hash provided"
-    log_info "Plugin will auto-generate a secure random password on first start"
-    log_warn "IMPORTANT: Check server logs for the auto-generated password and save it immediately!"
-    PASSWORD_HASH=""
+    if [ -n "$RCON_PASSWORD" ]; then
+        log_info "Using RCON_PASSWORD"
+        if [ "$RCON_PASSWORD" = "verysecurepassword" ]; then
+            log_warn "RCON_PASSWORD is still the old example value 'verysecurepassword'."
+            log_warn "Remove the setting to get a random password, or choose your own."
+        fi
+    elif [ -s "$RCON_PASSWORD_FILE" ]; then
+        log_info "Using the RCON password saved in $RCON_PASSWORD_FILE"
+    else
+        NEW_PASSWORD=$(head -c 32 /dev/urandom | base64 | tr -d '\n/+=' | head -c 32)
+        [ ${#NEW_PASSWORD} -ge 24 ] || error_exit "Failed to generate an RCON password"
+        (umask 077 && printf '%s\n' "$NEW_PASSWORD" > "$RCON_PASSWORD_FILE") ||
+            error_exit "Failed to save the RCON password to $RCON_PASSWORD_FILE"
+        NEW_PASSWORD=""
+        log_success "Generated a random RCON password, saved in $RCON_PASSWORD_FILE"
+        log_info "Inside the container, rcon-cli uses it by itself. To read it: docker exec <container> cat $RCON_PASSWORD_FILE"
+    fi
+    [ -f "$RCON_PASSWORD_FILE" ] && chmod 600 "$RCON_PASSWORD_FILE" 2>/dev/null
+    PLAINTEXT_PASSWORD=$(rcon_plain_password) || error_exit "No RCON password available"
+    PASSWORD_HASH=$(printf '%s' "$PLAINTEXT_PASSWORD" | rcon_hash_password) ||
+        error_exit "Failed to hash the RCON password"
+    log_success "Password hash generated"
 fi
 
 # Create or update RCON configuration file
@@ -310,59 +298,7 @@ log_info "Plugin: $PLUGIN_PATH"
 log_info "Config: $RCON_CONFIG_FILE"
 log_info "Host: $RCON_HOST"
 log_info "Port: $RCON_PORT"
-if [ -n "$PASSWORD_HASH" ]; then
-    log_info "Authentication: Enabled (password hash configured)"
-else
-    log_warn "Authentication: Plugin will auto-generate password on first start"
-    log_warn "Check server logs for the generated password and save it immediately!"
-fi
-
-# Create rcon-cli configuration file for easier command execution
-log_step "6" "Creating rcon-cli configuration"
-RCON_CLI_HOME="${HOME:-/home/hytale}"
-RCON_CLI_CONFIG="${RCON_CLI_HOME}/.rcon-cli.yaml"
-
-# Ensure home directory exists
-if [ ! -d "$RCON_CLI_HOME" ]; then
-    mkdir -p "$RCON_CLI_HOME" || log_warn "Failed to create home directory: $RCON_CLI_HOME"
-fi
-
-# Create the config file
-# Include plaintext password only if we have it (for rcon-cli to work)
-if [ -n "$PLAINTEXT_PASSWORD" ]; then
-    # YAML single-quoted string: only ' needs escaping (as ''), everything else is literal
-    YAML_PASSWORD=$(printf '%s' "$PLAINTEXT_PASSWORD" | sed "s/'/''/g")
-    # umask 077 so the file is never readable by others, not even briefly
-    (umask 077 && cat > "$RCON_CLI_CONFIG" << EOF
-host: '${RCON_HOST}'
-port: ${RCON_PORT}
-password: '${YAML_PASSWORD}'
-EOF
-    )
-    if [ -f "$RCON_CLI_CONFIG" ]; then
-        chmod 600 "$RCON_CLI_CONFIG" || log_warn "Failed to set permissions on $RCON_CLI_CONFIG"
-        log_success "rcon-cli configuration created at $RCON_CLI_CONFIG"
-        log_info "You can now use 'rcon-cli <command>' without specifying host/port/password"
-    else
-        log_warn "Failed to create rcon-cli configuration file at $RCON_CLI_CONFIG"
-    fi
-else
-    # No plaintext password available - create config without password
-    cat > "$RCON_CLI_CONFIG" << EOF
-host: ${RCON_HOST}
-port: ${RCON_PORT}
-EOF
-    if [ -f "$RCON_CLI_CONFIG" ]; then
-        chmod 600 "$RCON_CLI_CONFIG" || log_warn "Failed to set permissions on $RCON_CLI_CONFIG"
-        log_success "rcon-cli configuration created at $RCON_CLI_CONFIG (without password)"
-        if [ -n "$PASSWORD_HASH" ]; then
-            log_warn "Only RCON_PASSWORD_HASH was provided (no plaintext password)"
-            log_warn "Use 'rcon-cli --password <password> <command>' or set RCON_PASSWORD for passwordless usage"
-        else
-            log_warn "No RCON password configured - plugin will auto-generate password on first start"
-            log_warn "Check server logs for the generated password, then set RCON_PASSWORD and restart"
-        fi
-    else
-        log_warn "Failed to create rcon-cli configuration file at $RCON_CLI_CONFIG"
-    fi
+log_info "Authentication: Enabled (password hash configured)"
+if [ -z "$PLAINTEXT_PASSWORD" ]; then
+    log_warn "Only a password hash is known: rcon-cli, player warnings and the health check's RCON test need the plaintext RCON_PASSWORD"
 fi

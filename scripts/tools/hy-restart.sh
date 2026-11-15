@@ -52,7 +52,7 @@ say() {
     if rcon_command say "$*" >/dev/null 2>&1; then
         log_info "Told players: $*"
     else
-        log_warn "Could not warn players over RCON (needs RCON_ENABLED=true and a plaintext RCON_PASSWORD)"
+        log_warn "Could not warn players over RCON (RCON is off, only a password hash is set, or the server did not answer)"
     fi
 }
 

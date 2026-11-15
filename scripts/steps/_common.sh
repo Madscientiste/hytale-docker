@@ -132,11 +132,45 @@ with_auth_lock() {
     flock /data/.auth.lock "$@"
 }
 
+# Password made by the image when RCON_PASSWORD is not set (owner-only file)
+RCON_PASSWORD_FILE="/data/.rcon-password"
+
+# True when $1 looks like a plugin password hash (base64salt:base64hash)
+is_rcon_password_hash() {
+    printf '%s' "$1" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
+}
+
+# Print the plaintext RCON password: RCON_PASSWORD, else the generated one.
+# Fails when only a hash is known.
+rcon_plain_password() {
+    if [ -n "${RCON_PASSWORD:-}" ]; then
+        is_rcon_password_hash "$RCON_PASSWORD" && return 1
+        printf '%s' "$RCON_PASSWORD"
+        return 0
+    fi
+    [ -n "${RCON_PASSWORD_HASH:-}" ] && return 1
+    [ -s "$RCON_PASSWORD_FILE" ] || return 1
+    printf '%s' "$(head -n 1 "$RCON_PASSWORD_FILE")"
+}
+
+# Hash the password read from stdin the way the RCON plugin checks it:
+# base64(salt) ":" base64(sha256(salt + password)), 16 random salt bytes.
+# The password never appears on a command line.
+rcon_hash_password() {
+    local salt_file salt hash
+    salt_file=$(mktemp) || return 1
+    head -c 16 /dev/urandom > "$salt_file"
+    salt=$(base64 < "$salt_file" | tr -d '\n')
+    hash=$({ cat "$salt_file"; cat; } | openssl dgst -sha256 -binary | base64 | tr -d '\n')
+    rm -f "$salt_file"
+    [ -n "$salt" ] && [ -n "$hash" ] || return 1
+    printf '%s:%s\n' "$salt" "$hash"
+}
+
 # True when RCON is on and a plaintext password is known (not only a hash)
 rcon_usable() {
     [ "${RCON_ENABLED:-true}" = "true" ] || return 1
-    [ -n "${RCON_PASSWORD:-}" ] || return 1
-    ! echo "${RCON_PASSWORD}" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
+    rcon_plain_password >/dev/null 2>&1
 }
 
 # Send one command to the server over RCON and print its reply. Fails when RCON
@@ -145,9 +179,10 @@ rcon_usable() {
 # error: the plugin answers "Error: ..." with exit code 0.
 # rcon-cli reads RCON_HOST/RCON_PORT/RCON_PASSWORD from the environment.
 rcon_command() {
-    local reply
-    rcon_usable || return 1
-    reply=$(RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="${RCON_PASSWORD}" \
+    local reply password
+    [ "${RCON_ENABLED:-true}" = "true" ] || return 1
+    password=$(rcon_plain_password 2>/dev/null) || return 1
+    reply=$(RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="$password" \
         timeout "${RCON_COMMAND_TIMEOUT:-10}" rcon-cli "$@" 2>&1) || return 1
     case "$reply" in
         Error:*) printf '%s\n' "$reply" >&2; return 1 ;;
