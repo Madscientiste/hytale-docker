@@ -16,8 +16,12 @@ check_prerequisites jq curl
 # RCON configuration from environment variables
 RCON_ENABLED="${RCON_ENABLED:-true}"
 # Empty: the plugin release this image was tested with, checked by sha256.
-# "latest" (newest release) or a tag such as "rcon-v1.1.0": not checked.
+# "latest" (newest release) or another release tag such as "rcon-v1.1.0" (or
+# just "1.1.0"): not checked.
 RCON_VERSION="${RCON_VERSION:-}"
+case "$RCON_VERSION" in
+    [0-9]*|v[0-9]*) RCON_VERSION="rcon-v${RCON_VERSION#v}" ;;  # release tags are rcon-v<x>
+esac
 RCON_PINNED_TAG="rcon-v1.1.1"
 RCON_PINNED_SHA256="86fa51aff4ea19baab7322f4e48308b75d2b28bf358b1df1e3b91aa9b2b72413"
 EXPECTED_SHA256=""
@@ -97,7 +101,7 @@ elif [ "$RCON_VERSION" = "latest" ]; then
         RELEASE_TAG="${INSTALLED_JAR%.jar}"
     fi
 else
-    # Use provided version as tag (may be full tag like "rcon-v1.1.0" or just version like "1.1.0")
+    # A release tag such as "rcon-v1.1.0" (plain "1.1.0" was mapped to it above)
     RELEASE_TAG="$RCON_VERSION"
     log_info "Using specified version: $RELEASE_TAG"
 fi
@@ -295,10 +299,13 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
     fi
 fi
 
-# Write configuration file
+# Write configuration file. It holds the password hash, so only the server
+# user may read it (umask for a new file, chmod for an old .tmp left behind);
+# mv keeps that mode. Keep to the keys the plugin knows: it treats an unknown
+# key as a broken config and keeps RCON off.
 TEMP_RCON_CONFIG="${RCON_CONFIG_FILE}.tmp"
-echo "$RCON_CONFIG_JSON" | jq . > "$TEMP_RCON_CONFIG" 2>/dev/null
-if [ $? -eq 0 ] && jq empty "$TEMP_RCON_CONFIG" 2>/dev/null; then
+if (umask 077; printf '%s\n' "$RCON_CONFIG_JSON" | jq . > "$TEMP_RCON_CONFIG") 2>/dev/null \
+    && chmod 600 "$TEMP_RCON_CONFIG" && jq empty "$TEMP_RCON_CONFIG" 2>/dev/null; then
     mv "$TEMP_RCON_CONFIG" "$RCON_CONFIG_FILE"
     log_success "RCON configuration written to $RCON_CONFIG_FILE"
 else

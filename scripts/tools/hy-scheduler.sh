@@ -62,7 +62,7 @@ run_on_update() {
         return
     }
     log_info "Automatic restart on update: checking every ${RESTART_CHECK_MINUTES} minutes"
-    local current latest
+    local current latest restarted_for=""
     while :; do
         sleep $((RESTART_CHECK_MINUTES * 60))
         if ! refresh_auth_if_expiring 10 >/dev/null 2>&1; then
@@ -73,9 +73,13 @@ run_on_update() {
         latest=$(latest_version)
         if [ -z "$current" ] || [ -z "$latest" ]; then
             log_warn "Update check skipped: could not read the installed or latest version"
+        elif [ "$current" != "$latest" ] && [ "$latest" = "$restarted_for" ]; then
+            # A restart for this version already ran and did not install it;
+            # do not restart again every check
+            log_warn "Server ${latest} is out, but the restart for it left ${current} installed; not restarting again for it (see the startup logs)"
         elif [ "$current" != "$latest" ]; then
             log_info "New server version ${latest} available (installed: ${current})"
-            hy-restart --reason "update to ${latest}" || true
+            hy-restart --reason "update to ${latest}" && restarted_for="$latest"
         else
             log_debug "Update check: ${current} is the latest version"
         fi

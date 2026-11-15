@@ -124,13 +124,16 @@ HYTALE_RUN_DIR="/tmp/hytale"
 HYTALE_PID_FILE="${HYTALE_RUN_DIR}/server.pid"
 HYTALE_RESTART_FLAG="${HYTALE_RUN_DIR}/restart-requested"
 HYTALE_RESTART_PENDING="${HYTALE_RUN_DIR}/restart-pending"
-HYTALE_STATE_FILE="${HYTALE_RUN_DIR}/state"  # "starting|running <epoch>"
+HYTALE_STATE_FILE="${HYTALE_RUN_DIR}/state"  # "starting|downloading|running <epoch>"
 
 # Run a command while holding the auth lock. Hytale rotates the refresh token
 # on every use, so two refreshes at once would invalidate each other.
 with_auth_lock() {
     flock /data/.auth.lock "$@"
 }
+
+# "True" or "TRUE" mean true too; anything but true turns RCON off
+RCON_ENABLED=$(printf '%s' "${RCON_ENABLED:-true}" | tr '[:upper:]' '[:lower:]')
 
 # Password made by the image when RCON_PASSWORD is not set (owner-only file)
 RCON_PASSWORD_FILE="/data/.rcon-password"
@@ -199,8 +202,21 @@ rcon_command() {
 
 # Installed server version from /data/HytaleServer.jar, e.g. "0.7.7" (or the
 # January 2026 form "2026.01.17-4b0f30090"). Empty when unknown.
+# Asking the jar starts a JVM, so the answer is kept per jar (time and size)
+# in $HYTALE_RUN_DIR/server-version.
 installed_server_version() {
     [ -f /data/HytaleServer.jar ] || return 1
-    java -jar /data/HytaleServer.jar --version 2>/dev/null \
-        | sed -n 's/^HytaleServer v\([^ ]*\).*/\1/p' | tail -n 1
+    local cache="${HYTALE_RUN_DIR}/server-version" stamp line version
+    stamp=$(stat -c '%Y-%s' /data/HytaleServer.jar 2>/dev/null)
+    line=$(cat "$cache" 2>/dev/null)
+    if [ -n "$stamp" ] && [ "${line%% *}" = "$stamp" ] && [ -n "${line#* }" ]; then
+        printf '%s\n' "${line#* }"
+        return 0
+    fi
+    version=$(java -jar /data/HytaleServer.jar --version 2>/dev/null \
+        | sed -n 's/^HytaleServer v\([^ ]*\).*/\1/p' | tail -n 1)
+    [ -n "$version" ] || return 0
+    # The cache is optional: no folder or no write access is fine
+    [ -n "$stamp" ] && { printf '%s %s\n' "$stamp" "$version" > "$cache"; } 2>/dev/null
+    printf '%s\n' "$version"
 }
