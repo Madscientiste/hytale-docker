@@ -5,7 +5,7 @@
 The server only updates when it restarts, and only when `VERSION=LATEST`:
 
 - **`VERSION=LATEST`** (default): every restart checks for a new version and downloads it.
-- **`VERSION=<version>`** (for example `0.7.7`): the server stays on that version. Nothing is checked or downloaded.
+- **`VERSION=<version>`** (for example `0.7.7`): the server stays on that version. Nothing is checked or downloaded. An installed server of another version keeps running (the log warns); start once with `FORCE_DOWNLOAD=true` to install the pinned one.
 
 Nothing updates behind your back: a running server is never changed. Hytale's own built-in updater (`/update`) is switched off in this image, because the image manages updates itself.
 

@@ -220,7 +220,7 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 
 The image has a Docker health check (`hy-health.sh`), shown as `healthy` / `unhealthy` in `docker ps`:
 
-- **Starting** (login, download, configuration): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. A long startup usually means the container waits for a browser login; see the logs.
+- **Starting** (login, configuration, plugins): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. The server download does not count: it is always healthy, and the clock starts again after it. A long startup usually means the container waits for a browser login; see the logs.
 - **Running**: healthy while the server process runs and answers the `who` command over RCON within 10 seconds. No reply, or a reply starting with `Error:`, counts as unhealthy. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
 
 ### `HEALTH_STARTUP_MINUTES`
@@ -357,7 +357,7 @@ MODS=https://example.com/mods/cool-mod-1.2.0.jar,https://example.com/mods/other-
 
 ## Recommended Plugins
 
-Hytale's official server manual recommends four plugins. This image installs them by default. On every start it downloads the build that matches the installed server version from each plugin's GitHub releases into `/data/mods`.
+Hytale's official server manual recommends four plugins. This image installs them by default. On every start it checks for the build that matches the installed server version in each plugin's GitHub releases, and downloads it into `/data/mods` when it is missing. Each download is checked against the sha256 checksum GitHub records for the file; a file that does not match is not installed.
 
 | Setting | Plugin | What it does |
 |---|---|---|
@@ -372,7 +372,7 @@ All four are **Type:** Boolean, **Default:** `true`. Set one to `false` to turn 
 - A plugin you turn off is moved to `/data/.disabled-plugins`, outside `mods/`, so the server ignores it. Turning it back on moves it back.
 - When the server version changes, the image replaces the jars it installed with the builds for the new version. If a plugin has no build for that version yet, it is skipped for now (with a warning) and the server starts without it.
 - If you put your own copy of one of these plugins in `data/mods`, the image leaves that plugin alone.
-- The image only touches the jars it downloaded itself. They are listed in `data/mods/.recommended-plugins.txt`.
+- The image only touches the jars it downloaded itself. They are listed in `data/.recommended-plugins.txt`.
 
 **Web server port:** the web server listens on the game port + 3, so **5523/tcp** by default, with a self-signed certificate. It is not reachable from outside the container until you map the port in `docker-compose.yml` (`"5523:5523/tcp"`). Requests need a login: a player, or a service account. To make basic server info public, add it to the `ANONYMOUS` group in `permissions.json`. See the plugins' READMEs (linked above) for service accounts and permissions.
 
@@ -597,7 +597,7 @@ RCON_ENABLED=true
 **Description:** Which RCON plugin to install.
 
 - empty (default): the release this image was tested with. Its sha256 checksum is checked; a file that does not match is refused.
-- `latest`: the newest release on GitHub, not checked. If GitHub cannot be reached, the installed version is kept.
+- `latest`: the newest release on GitHub, not checked. A plain version such as `1.1.0` means the tag `rcon-v1.1.0`. If GitHub cannot be reached, the installed version is kept.
 - A release tag such as `rcon-v1.1.1`: that release, not checked.
 
 Other versions found in `/data/mods` are moved to `/data/.disabled-plugins`, so only one RCON plugin loads.
