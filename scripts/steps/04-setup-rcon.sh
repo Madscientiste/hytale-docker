@@ -38,8 +38,16 @@ is_password_hash() { is_rcon_password_hash "$1"; }
 
 sha256_of() { sha256sum "$1" | cut -d' ' -f1; }
 
-# Skip if RCON is disabled
+RCON_JAR_PATTERN='^rcon-[0-9][0-9A-Za-z.+-]*\.jar$'
+DISABLED_DIR="${HYTALE_DATA_DIR}/.disabled-plugins"
+
+# RCON off: set an installed plugin aside so the server does not load it
 if [ "$RCON_ENABLED" != "true" ]; then
+    for JAR in $(ls "$MODS_DIR" 2>/dev/null | grep -E "$RCON_JAR_PATTERN"); do
+        mkdir -p "$DISABLED_DIR"
+        mv -f "${MODS_DIR}/${JAR}" "${DISABLED_DIR}/${JAR}" &&
+            log_info "RCON is disabled: moved ${JAR} to ${DISABLED_DIR}"
+    done
     log_info "RCON is disabled (RCON_ENABLED=false), skipping setup"
     exit 0
 fi
@@ -125,6 +133,11 @@ log_debug "Download URL: $DOWNLOAD_URL"
 log_step "2" "Downloading RCON plugin"
 log_info "URL: $DOWNLOAD_URL"
 log_info "Destination: $PLUGIN_PATH"
+
+# RCON turned back on: bring back the jar set aside while it was off
+if [ ! -f "$PLUGIN_PATH" ] && [ -f "${DISABLED_DIR}/${PLUGIN_JAR}" ]; then
+    mv -f "${DISABLED_DIR}/${PLUGIN_JAR}" "$PLUGIN_PATH" && log_info "Re-enabled ${PLUGIN_JAR}"
+fi
 
 # A pinned plugin must match its checksum, also when it is already installed
 if [ -f "$PLUGIN_PATH" ] && [ -n "$EXPECTED_SHA256" ] && [ "$(sha256_of "$PLUGIN_PATH")" != "$EXPECTED_SHA256" ]; then
@@ -228,7 +241,7 @@ else
             log_warn "RCON_PASSWORD is still the old example value 'verysecurepassword'."
             log_warn "Remove the setting to get a random password, or choose your own."
         fi
-    elif [ -s "$RCON_PASSWORD_FILE" ]; then
+    elif rcon_plain_password >/dev/null 2>&1; then
         log_info "Using the RCON password saved in $RCON_PASSWORD_FILE"
     else
         NEW_PASSWORD=$(head -c 32 /dev/urandom | base64 | tr -d '\n/+=' | head -c 32)

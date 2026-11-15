@@ -135,9 +135,10 @@ with_auth_lock() {
 # Password made by the image when RCON_PASSWORD is not set (owner-only file)
 RCON_PASSWORD_FILE="/data/.rcon-password"
 
-# True when $1 looks like a plugin password hash (base64salt:base64hash)
+# True when $1 is a plugin password hash: base64 of a 16-byte salt ":" base64
+# of a 32-byte SHA-256 (a password such as "admin:hunter2" is not one)
 is_rcon_password_hash() {
-    printf '%s' "$1" | grep -qE '^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
+    printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]{43}='
 }
 
 # Print the plaintext RCON password: RCON_PASSWORD, else the generated one.
@@ -149,8 +150,10 @@ rcon_plain_password() {
         return 0
     fi
     [ -n "${RCON_PASSWORD_HASH:-}" ] && return 1
-    [ -s "$RCON_PASSWORD_FILE" ] || return 1
-    printf '%s' "$(head -n 1 "$RCON_PASSWORD_FILE")"
+    local saved
+    saved=$(head -n 1 "$RCON_PASSWORD_FILE" 2>/dev/null)
+    [ -n "$(printf '%s' "$saved" | tr -d '[:space:]')" ] || return 1
+    printf '%s' "$saved"
 }
 
 # Hash the password read from stdin the way the RCON plugin checks it:
@@ -183,7 +186,11 @@ rcon_command() {
     [ "${RCON_ENABLED:-true}" = "true" ] || return 1
     password=$(rcon_plain_password 2>/dev/null) || return 1
     reply=$(RCON_HOST=127.0.0.1 RCON_PORT="${RCON_PORT:-25575}" RCON_PASSWORD="$password" \
-        timeout "${RCON_COMMAND_TIMEOUT:-10}" rcon-cli "$@" 2>&1) || return 1
+        timeout "${RCON_COMMAND_TIMEOUT:-10}" rcon-cli "$@" 2>&1) || {
+        # e.g. "connection refused" or a failed login; empty after a timeout
+        [ -z "$reply" ] || printf '%s\n' "$reply" >&2
+        return 1
+    }
     case "$reply" in
         Error:*) printf '%s\n' "$reply" >&2; return 1 ;;
     esac
