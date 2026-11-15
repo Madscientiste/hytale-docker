@@ -88,3 +88,6 @@ __pycache__/
 venv/
 env/
 
+
+# Local settings (copy of .env.example with your values and passwords)
+.env
