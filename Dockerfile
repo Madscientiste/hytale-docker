@@ -1,5 +1,5 @@
 # Build stage: Build rcon-cli from source
-FROM golang:1.23-alpine AS rcon-cli-builder
+FROM golang:1.27-alpine AS rcon-cli-builder
 
 RUN apk add --no-cache git && \
     go install github.com/itzg/rcon-cli@latest && \
