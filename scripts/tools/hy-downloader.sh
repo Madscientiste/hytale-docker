@@ -644,9 +644,11 @@ fi
 if [ "$SIMPLE_NAMES" = true ]; then
     FINAL_JAR="${OUTPUT_DIR}/HytaleServer.jar"
     FINAL_ASSETS="${OUTPUT_DIR}/Assets.zip"
+    FINAL_AOT="${OUTPUT_DIR}/HytaleServer.aot"
 else
     FINAL_JAR="${OUTPUT_DIR}/hs-${ACTUAL_VERSION}.jar"
     FINAL_ASSETS="${OUTPUT_DIR}/ha-${ACTUAL_VERSION}.zip"
+    FINAL_AOT="${OUTPUT_DIR}/hs-${ACTUAL_VERSION}.aot"
 fi
 
 # Check if download is needed
@@ -747,6 +749,13 @@ elif [ -f "$TEMP_EXTRACT/Server/Assets.zip" ]; then
     TEMP_ASSETS="$TEMP_EXTRACT/Server/Assets.zip"
 fi
 
+# Optional AOT cache (JEP 514), shipped next to the jar since early 2026.
+# It speeds up startup and only matches the jar it was built for.
+TEMP_AOT=""
+if [ -n "$TEMP_JAR" ] && [ -f "$(dirname "$TEMP_JAR")/HytaleServer.aot" ]; then
+    TEMP_AOT="$(dirname "$TEMP_JAR")/HytaleServer.aot"
+fi
+
 # Verify required files exist
 if [ -z "$TEMP_JAR" ]; then
     error_exit "HytaleServer.jar not found after extraction"
@@ -766,6 +775,19 @@ if mv "$TEMP_JAR" "$FINAL_JAR" && mv "$TEMP_ASSETS" "$FINAL_ASSETS"; then
     log_success "Files moved to final location"
 else
     error_exit "Failed to move files to final location"
+fi
+
+# Keep the AOT cache that belongs to this jar; drop one left from an older jar
+if [ -n "$TEMP_AOT" ]; then
+    if mv "$TEMP_AOT" "$FINAL_AOT"; then
+        log_info "  HytaleServer.aot: $FINAL_AOT"
+    else
+        log_warn "Failed to move HytaleServer.aot (server will start without the AOT cache)"
+        rm -f "$FINAL_AOT"
+    fi
+else
+    log_debug "No HytaleServer.aot in this download"
+    rm -f "$FINAL_AOT"
 fi
 
 # Verify final files exist

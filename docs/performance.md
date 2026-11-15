@@ -55,6 +55,12 @@ The container already includes these G1GC optimizations:
 
 These settings are optimized for server workloads and provide a good balance between throughput and latency.
 
+### AOT Cache (faster startup)
+
+Hytale ships `HytaleServer.aot` next to the server jar: an ahead-of-time cache (JEP 514) that makes the server start faster. The container keeps it in `/data` when it downloads the server, and adds `-XX:AOTCache=HytaleServer.aot` when the file is there.
+
+The cache only works with the exact jar and Java version it was built for. If they don't match, Java prints a warning and starts normally without it.
+
 ### Monitoring
 
 Check JVM performance from your host:
