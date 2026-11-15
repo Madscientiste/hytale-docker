@@ -62,6 +62,9 @@ while :; do
     log_step "4" "Setting up RCON plugin"
     "${SCRIPT_DIR}/04-setup-rcon.sh"
 
+    # Step 4b: Download mods listed in MODS
+    "${SCRIPT_DIR}/05-install-mods.sh"
+
     # Step 5: Load authentication credentials
     log_step "5" "Loading authentication credentials"
     . "${SCRIPT_DIR}/03-load-auth.sh"

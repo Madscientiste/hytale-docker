@@ -10,6 +10,7 @@ This document describes all environment variables that can be used to configure 
 - [Automatic Restarts](#automatic-restarts)
 - [Health Check](#health-check)
 - [Server Configuration](#server-configuration)
+- [Mods](#mods)
 - [JVM & Server Startup](#jvm--server-startup)
 - [Backup Configuration](#backup-configuration)
 - [RCON Configuration](#rcon-configuration)
@@ -327,6 +328,28 @@ DEFAULT_WORLD="my_custom_world"
 **Example:**
 ```bash
 DEFAULT_GAME_MODE="Creative"
+```
+
+---
+
+## Mods
+
+Hytale loads every `.jar` and `.zip` in `/data/mods` (on the host: `data/mods`). Copy mods there yourself, or list download links in `MODS`.
+
+### `MODS`
+
+**Type:** String (download links, separated by commas, spaces or new lines)  
+**Default:** empty  
+**Description:** Mods to download at startup. Each link must end in the mod's `.jar` or `.zip` file name.
+
+- A mod is downloaded once. When its file is already in `/data/mods`, it is kept as is (no download).
+- Files are never deleted. Mods you add by hand are not touched. When you remove a link from `MODS`, its file stays and the logs warn on every start until you delete it.
+- To update a mod, replace its link with the new version's link, then delete the old file from `data/mods`.
+- If a listed mod cannot be downloaded, the container stops instead of starting without it (worlds may depend on it).
+
+**Example:**
+```bash
+MODS=https://example.com/mods/cool-mod-1.2.0.jar,https://example.com/mods/other-mod.zip
 ```
 
 ---
