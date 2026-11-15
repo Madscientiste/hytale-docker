@@ -300,7 +300,7 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
         UNKNOWN_KEYS=$(echo "$RCON_CONFIG_JSON" | jq -r '[keys[] | select(IN("host", "port",
             "maxConnections", "maxFrameSize", "readTimeoutMs", "connectionTimeoutMs", "passwordHash",
             "maxConnectionsPerIp", "authTimeoutMs", "authMaxFailures", "authFailureWindowMs",
-            "authBanMs") | not)] | join(", ")')
+            "authBanMs", "allowNoPassword", "noPasswordAllowFrom") | not)] | join(", ")')
         [ -z "$UNKNOWN_KEYS" ] || log_warn "$RCON_CONFIG_FILE has keys the RCON plugin may not know: ${UNKNOWN_KEYS}. If RCON does not start, remove them."
     else
         log_warn "Existing config file is invalid JSON, creating new one"
