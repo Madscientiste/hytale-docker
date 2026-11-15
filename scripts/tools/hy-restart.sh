@@ -150,10 +150,12 @@ rm -f "$HYTALE_RESTART_PENDING"
 # The supervisor sees this flag when the server exits and starts it again
 touch "$HYTALE_RESTART_FLAG"
 exec 9<&-
-log_info "Restarting the server now${suffix}"
 if ! kill -TERM "$SERVER_PID"; then
     # Without this, the next crash would look like a requested restart
     rm -f "$HYTALE_RESTART_FLAG"
     error_exit "Failed to stop the server"
 fi
+# Only after the kill: dying on this output (SIGPIPE) must not leave the flag
+# set while the server keeps running
+log_info "Restarting the server now${suffix}"
 log_success "Restart started. Follow it with: docker logs -f <container>"
