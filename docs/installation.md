@@ -43,14 +43,13 @@ services:
       
       # RCON
       - RCON_ENABLED=true
-      - RCON_PASSWORD=YourSecurePassword
-      - RCON_HOST=0.0.0.0
+      - RCON_HOST=0.0.0.0   # random password in data/.rcon-password; see docs/rcon.md
       - RCON_PORT=25575
     volumes:
       - "./data:/data"
     ports:
       - "5520:5520/udp"   # Hytale game port
-      - "25575:25575/tcp" # RCON port
+      - "127.0.0.1:25575:25575/tcp" # RCON, this host only
 ```
 
 Then run:

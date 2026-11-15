@@ -50,14 +50,13 @@ services:
       - MOTD=Welcome to our Hytale server!
       - MAX_PLAYERS=50
       
-      # RCON
-      - RCON_PASSWORD=YourSecurePassword  # Set your RCON password
-      - RCON_HOST=0.0.0.0  # Allow RCON access from host (default: 127.0.0.1 = container only)
+      # RCON: no password needed, a random one is saved in data/.rcon-password
+      - RCON_HOST=0.0.0.0  # listen inside the container; the port line below limits it to this host
     volumes:
       - "./data:/data"
     ports:
       - "5520:5520/udp"   # Hytale UDP/QUIC
-      - "25575:25575/tcp" # RCON TCP (requires RCON_HOST=0.0.0.0 to access from host)
+      - "127.0.0.1:25575:25575/tcp" # RCON, this host only (never open it to the internet)
 ```
 
 Start the server:
@@ -70,7 +69,7 @@ docker compose logs -f  # Watch for authentication prompt on first run
 
 **Configuration:** When you use this repository's `docker-compose.yml`, keep your settings in a `.env` file instead of editing the compose file:
 ```bash
-cp .env.example .env   # then edit .env (change RCON_PASSWORD!)
+cp .env.example .env   # then edit .env
 docker compose up -d   # apply changes
 ```
 `.env` is ignored by git, so your passwords stay local. See [Environment Variables](docs/env-variables.md) for all options.
@@ -107,6 +106,7 @@ See [Update Management](docs/update-management.md) for details.
 - **[Hytale API](docs/misc/hytale-api.md)** - API endpoints documentation
 - **[hy-auth CLI](docs/misc/hy-auth.md)** - OAuth2 authentication utility
 - **[hy-downloader CLI](docs/misc/hy-downloader.md)** - Server file download utility
+- **rcon-cli** - send console commands: `docker compose exec hytale rcon-cli who` (see [RCON Setup](docs/rcon.md))
 - **gen-psswd** - RCON password hash generator (see [RCON Setup](docs/rcon.md))
 
 ## Project Structure
@@ -131,6 +131,7 @@ hytale-docker/
 │       ├── hy-restart.sh   # Restart the server inside the container
 │       ├── hy-scheduler.sh # Background jobs (login refresh, automatic restarts)
 │       ├── hy-health.sh    # Docker health check
+│       ├── rcon-cli.sh     # rcon-cli wrapper (finds the RCON password)
 │       └── gen-psswd.sh    # RCON password hash generator
 └── docs/                   # Documentation
 ```
