@@ -11,7 +11,7 @@ log_section "Hytale Server Startup"
 
 # Runtime state shared with hy-restart and hy-scheduler (see _common.sh)
 mkdir -p "$HYTALE_RUN_DIR"
-rm -f "$HYTALE_PID_FILE" "$HYTALE_RESTART_FLAG"
+rm -f "$HYTALE_PID_FILE" "$HYTALE_RESTART_FLAG" "$HYTALE_STATE_FILE"
 
 # Supervisor: the container stays up while the game server restarts inside it.
 # A restart requested with hy-restart runs the startup steps again (so a new
@@ -44,6 +44,8 @@ exec 3<&0
 export HYTALE_DISABLE_UPDATES=true
 
 while :; do
+    echo "starting $(date +%s)" > "$HYTALE_STATE_FILE"
+
     # Step 1: Check and run authentication if needed
     log_step "1" "Authenticating with Hytale"
     with_auth_lock sh /usr/local/bin/hy-auth.sh -o "${HYTALE_DATA_DIR}/auth.json"
@@ -76,6 +78,7 @@ while :; do
     "${SCRIPT_DIR}/09-start-server.sh" 0<&3 &
     SERVER_PID=$!
     echo "$SERVER_PID" > "$HYTALE_PID_FILE"
+    echo "running $(date +%s)" > "$HYTALE_STATE_FILE"
 
     # wait returns early when a trapped signal arrives; keep waiting until the
     # server has really exited so its exit code is the one we report
