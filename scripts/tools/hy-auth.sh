@@ -367,6 +367,20 @@ json_get_num() {
     fi
 }
 
+# auth.json holds account tokens: keep every file this script creates private
+umask 077
+
+# Replace auth file $1 with $1.tmp in one step (never a half-written file)
+commit_auth_file() {
+    chmod 600 "$1.tmp" 2>/dev/null || true
+    mv -f "$1.tmp" "$1"
+}
+
+# Update only the refresh token in auth file $1
+save_refresh_token() {
+    jq --arg t "$2" '.refresh_token = $t' "$1" > "$1.tmp" && commit_auth_file "$1"
+}
+
 # Try to refresh tokens (returns 0 on success, 1 on failure, doesn't exit)
 try_refresh_tokens() {
     local auth_file="${REFRESH_AUTH_FILE:-$AUTH_FILE}"
@@ -465,6 +479,12 @@ try_refresh_tokens() {
     if [ -z "$new_refresh_token" ] || [ "$new_refresh_token" = "null" ]; then
         new_refresh_token="$refresh_token"
     fi
+
+    # Hytale invalidates the old refresh token on use: save the new one right
+    # away, so a failure in the next steps cannot lose the login
+    if [ "$new_refresh_token" != "$refresh_token" ]; then
+        save_refresh_token "$auth_file" "$new_refresh_token" || log_warn "Could not save the new refresh token yet"
+    fi
     
     if [ -z "$access_token" ]; then
         return 1
@@ -547,9 +567,9 @@ try_refresh_tokens() {
                 owner_uuid: $owner_uuid,
                 owner_name: $owner_name,
                 expires_at: $expires_at
-            }' > "$auth_file" || return 1
+            }' > "$auth_file.tmp" || return 1
     else
-        cat > "$auth_file" <<EOF || return 1
+        cat > "$auth_file.tmp" <<EOF || return 1
 {
   "access_token": "$access_token",
   "refresh_token": "$new_refresh_token",
@@ -561,6 +581,7 @@ try_refresh_tokens() {
 }
 EOF
     fi
+    commit_auth_file "$auth_file" || return 1
     
     echo ""
     log_section "Token Refresh Complete!"
@@ -622,6 +643,12 @@ refresh_tokens() {
     # Use new refresh token if provided, otherwise keep old one
     if [ -z "$new_refresh_token" ] || [ "$new_refresh_token" = "null" ]; then
         new_refresh_token="$refresh_token"
+    fi
+
+    # Hytale invalidates the old refresh token on use: save the new one right
+    # away, so a failure in the next steps cannot lose the login
+    if [ "$new_refresh_token" != "$refresh_token" ]; then
+        save_refresh_token "$auth_file" "$new_refresh_token" || log_warn "Could not save the new refresh token yet"
     fi
     
     if [ -z "$access_token" ]; then
@@ -713,9 +740,9 @@ refresh_tokens() {
                 owner_uuid: $owner_uuid,
                 owner_name: $owner_name,
                 expires_at: $expires_at
-            }' > "$auth_file"
+            }' > "$auth_file.tmp"
     else
-        cat > "$auth_file" <<EOF
+        cat > "$auth_file.tmp" <<EOF
 {
   "access_token": "$access_token",
   "refresh_token": "$new_refresh_token",
@@ -727,6 +754,7 @@ refresh_tokens() {
 }
 EOF
     fi
+    commit_auth_file "$auth_file" || error_exit "Failed to save $auth_file"
     
     echo ""
     log_section "Token Refresh Complete!"
@@ -737,6 +765,11 @@ EOF
 
 # Parse command line arguments
 parse_args "$@"
+
+# "--refresh FILE" names the credentials file itself, no -o needed
+if [ -z "$AUTH_FILE" ] && [ "$REFRESH_MODE" = true ] && [ -n "$REFRESH_AUTH_FILE" ]; then
+    AUTH_FILE="$REFRESH_AUTH_FILE"
+fi
 
 # Validate that output path is provided
 if [ -z "$AUTH_FILE" ]; then
@@ -982,11 +1015,11 @@ if [ "$USE_JQ" = true ]; then
             owner_uuid: $owner_uuid,
             owner_name: $owner_name,
             expires_at: $expires_at
-        }' > "$AUTH_FILE"
+        }' > "$AUTH_FILE.tmp"
 else
     # Manual JSON construction (fallback)
     # Use PROFILE_UUID as owner_uuid to match the UUID in the tokens
-    cat > "$AUTH_FILE" <<EOF
+    cat > "$AUTH_FILE.tmp" <<EOF
 {
   "access_token": "$ACCESS_TOKEN",
   "refresh_token": "$REFRESH_TOKEN",
@@ -998,6 +1031,7 @@ else
 }
 EOF
 fi
+commit_auth_file "$AUTH_FILE" || error_exit "Failed to save $AUTH_FILE"
 
 echo ""
 log_section "Authentication Complete!"

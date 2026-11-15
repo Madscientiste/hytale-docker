@@ -108,9 +108,17 @@ After successful authentication, credentials are saved to `/data/auth.json`. Thi
 
 The container will use these saved credentials on subsequent starts, avoiding the need to re-authenticate unless the tokens expire.
 
+`auth.json` is readable only by its owner (mode `600`): it holds tokens that let someone run a server as your account. Keep it out of backups you share. The server also keeps its own encrypted copy, `auth.enc`, whose key comes from the machine ID in `/data/machine-id`, so keep that file with the rest of `/data`.
+
 ## Token Refresh
 
-The container automatically refreshes tokens when needed. If tokens are still valid, the container will skip refresh to avoid unnecessary API calls. Token refresh happens transparently during container startup.
+Hytale's refresh token lasts 30 days and is replaced by a new one each time it is used (the old one stops working).
+
+- **On every start**, the container refreshes the tokens if they are about to expire.
+- **Once a day while the server runs**, it refreshes them in the background (`AUTH_REFRESH_HOURS`, default `24`). So the login never runs out, even if the server runs for months without a restart.
+- A new refresh token is saved the moment Hytale issues it, and refreshes never run at the same time, so a failed or interrupted refresh cannot lose the login.
+
+If a refresh keeps failing (for example, the login was revoked), the logs say so. Restart the container and follow the login prompt.
 
 ## CLI Tool
 

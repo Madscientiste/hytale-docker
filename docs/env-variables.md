@@ -689,6 +689,12 @@ docker compose exec hytale rcon-cli "say Hello!"
 
 > **Note:** Authentication is handled automatically via `hy-auth.sh` during container startup. Credentials are stored in `/data/auth.json`. These environment variables are **not currently used** - authentication tokens are read from the JSON file, not environment variables.
 
+### `AUTH_REFRESH_HOURS`
+
+**Type:** Integer (hours, minimum `1`)  
+**Default:** `24`  
+**Description:** How often the login is refreshed in the background while the server runs. Hytale's refresh token expires after 30 days without use, so keep this well below 720.
+
 The following variables are documented for reference but are not actively used by the current entrypoint:
 
 ### `SESSION_TOKEN`

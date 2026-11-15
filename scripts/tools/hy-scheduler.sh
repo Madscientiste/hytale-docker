@@ -8,6 +8,9 @@
 #              checked every RESTART_CHECK_MINUTES
 # Players are warned RESTART_WARN_MINUTES before each restart (see hy-restart).
 #
+# Always on: refreshes the Hytale login once a day (AUTH_REFRESH_HOURS) so it
+# never expires while the server runs.
+#
 # Repository: https://github.com/Madscientiste/hytale-docker
 
 . /init-container/_common.sh
@@ -82,6 +85,27 @@ run_on_update() {
         fi
     done
 }
+
+# Keep the login alive while the server runs. Hytale's refresh token lasts
+# 30 days and is renewed on each use; without this, a server running for
+# more than 30 days without a restart would need a new browser login.
+# Refreshes when auth.json is older than AUTH_REFRESH_HOURS (default 24).
+keep_login_fresh() {
+    local hours="${AUTH_REFRESH_HOURS:-24}" age
+    echo "$hours" | grep -qE '^[0-9]+$' && [ "$hours" -ge 1 ] || hours=24
+    while :; do
+        sleep 3600
+        [ -f "$AUTH_FILE" ] || continue
+        age=$(( $(date +%s) - $(stat -c %Y "$AUTH_FILE") ))
+        [ "$age" -ge $((hours * 3600)) ] || continue
+        if with_auth_lock sh /usr/local/bin/hy-auth.sh --quiet --refresh "$AUTH_FILE" >/dev/null 2>&1; then
+            log_info "Login refreshed (keeps the 30-day login alive)"
+        else
+            log_warn "Login refresh failed; will retry in an hour. If it keeps failing, restart the container and follow the login prompt in its logs"
+        fi
+    done
+}
+keep_login_fresh &
 
 case "$RESTART_MODE" in
     off) ;;
