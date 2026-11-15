@@ -20,6 +20,10 @@ read -r state since < "$HYTALE_STATE_FILE"
 age=$(( $(date +%s) - ${since:-0} ))
 
 case "$state" in
+    downloading)
+        echo "checking or downloading server files for ${age}s"
+        exit 0
+        ;;
     starting)
         if [ "$age" -lt $((STARTUP_MINUTES * 60)) ]; then
             echo "starting for ${age}s"

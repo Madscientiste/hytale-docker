@@ -71,7 +71,12 @@ while :; do
 
     # Step 2: Download server files if needed
     log_step "2" "Checking server files"
+    # A first download can take longer than HEALTH_STARTUP_MINUTES on a slow
+    # link; it is not counted (a stalled download times out by itself), and the
+    # clock starts again after it
+    echo "downloading $(date +%s)" > "$HYTALE_STATE_FILE"
     run_step "${SCRIPT_DIR}/01-download-server.sh"
+    echo "starting $(date +%s)" > "$HYTALE_STATE_FILE"
 
     # Step 3: Configure server from environment variables
     log_step "3" "Configuring server"

@@ -253,7 +253,13 @@ log_info "Mode: Update check"
 # Only check for updates if VERSION=LATEST
 if [ "$VERSION" != "LATEST" ]; then
     log_info "Specific version requested ($VERSION), skipping update check"
-    log_info "Server files already present"
+    installed=$(get_current_version)
+    if [ -n "$installed" ] && [ "$installed" != "$VERSION" ]; then
+        log_warn "VERSION=$VERSION, but server $installed is installed and will start."
+        log_warn "To install $VERSION, start once with FORCE_DOWNLOAD=true."
+    else
+        log_info "Server files already present"
+    fi
     exit 0
 fi
 
