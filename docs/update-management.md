@@ -20,7 +20,7 @@ docker exec hytale hy-restart --minutes 10 # warn players, restart in 10 minutes
 docker exec hytale hy-restart --cancel     # cancel a pending restart
 ```
 
-- Players are warned in chat (`say`) when the countdown starts, at 1 minute and at 10 seconds. This needs RCON (`RCON_ENABLED=true` with a plaintext `RCON_PASSWORD`); without it the restart still happens, without warnings.
+- Players are warned in chat (`say`) when the countdown starts, at 1 minute and at 10 seconds. This needs RCON (on by default; it uses `RCON_PASSWORD` or the generated password). With RCON off, or only `RCON_PASSWORD_HASH`, the restart still happens, without warnings.
 - `hy-restart` waits for the countdown. Use `docker exec -d hytale hy-restart` to start it and return immediately.
 - A restart from `hy-restart` always checks for updates, skipping the 1-hour cooldown below.
 

@@ -11,6 +11,7 @@ services:
   hytale:
     image: ghcr.io/madscientiste/hytale-docker:latest
     restart: unless-stopped
+    stop_grace_period: 60s   # time to save the world when stopping
     container_name: hytale
     tty: true
     stdin_open: true
