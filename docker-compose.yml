@@ -40,6 +40,9 @@ services:
       - DEFAULT_GAME_MODE=${DEFAULT_GAME_MODE:-Adventure} # Adventure or Creative
       - SERVER_PASSWORD=${SERVER_PASSWORD:-} # Server password (empty for public)
 
+      # Mods: download links (.jar/.zip), comma-separated; downloaded once into data/mods
+      - MODS=${MODS:-}
+
       # JVM & Server Startup
       - INIT_MEMORY=${INIT_MEMORY:-8G} # Initial Java heap size
       - MAX_MEMORY=${MAX_MEMORY:-16G} # Maximum Java heap size
