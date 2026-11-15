@@ -373,6 +373,10 @@ umask 077
 # Replace auth file $1 with $1.tmp in one step (never a half-written file)
 commit_auth_file() {
     chmod 600 "$1.tmp" 2>/dev/null || true
+    # Run as root (docker exec): give the file to the owner of its folder, the server user
+    if [ "$(id -u)" = 0 ]; then
+        chown "$(stat -c %u:%g "$(dirname "$1")")" "$1.tmp" 2>/dev/null || true
+    fi
     mv -f "$1.tmp" "$1"
 }
 
@@ -461,7 +465,7 @@ try_refresh_tokens() {
     
     # Request new tokens using refresh token
     local token_response
-    token_response=$(curl -s -X POST "$TOKEN_URL" \
+    token_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
@@ -492,7 +496,7 @@ try_refresh_tokens() {
     
     # Get profiles with new access token
     local profiles_response
-    profiles_response=$(curl -s -X GET "$PROFILES_URL" \
+    profiles_response=$(curl -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
         -H "Authorization: Bearer $access_token" \
         -H "User-Agent: $USER_AGENT") || return 1
     
@@ -517,7 +521,7 @@ try_refresh_tokens() {
     
     # Create new game session
     local session_response
-    session_response=$(curl -s -X POST "$SESSION_URL" \
+    session_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
         -H "Authorization: Bearer $access_token" \
         -H "Content-Type: application/json" \
         -H "User-Agent: $USER_AGENT" \
@@ -624,7 +628,7 @@ refresh_tokens() {
     
     # Request new tokens using refresh token
     local token_response
-    token_response=$(curl -s -X POST "$TOKEN_URL" \
+    token_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
@@ -659,7 +663,7 @@ refresh_tokens() {
     
     # Get profiles with new access token
     local profiles_response
-    profiles_response=$(curl -s -X GET "$PROFILES_URL" \
+    profiles_response=$(curl -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
         -H "Authorization: Bearer $access_token" \
         -H "User-Agent: $USER_AGENT") || error_exit "Failed to fetch profiles"
     
@@ -687,7 +691,7 @@ refresh_tokens() {
     
     # Create new game session
     local session_response
-    session_response=$(curl -s -X POST "$SESSION_URL" \
+    session_response=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
         -H "Authorization: Bearer $access_token" \
         -H "Content-Type: application/json" \
         -H "User-Agent: $USER_AGENT" \
@@ -827,7 +831,7 @@ fi
 
 # Step 1: Request Device Code
 log_step "1" "Requesting device code"
-DEVICE_RESPONSE=$(curl -s -X POST "$DEVICE_AUTH_URL" \
+DEVICE_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$DEVICE_AUTH_URL" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -H "User-Agent: $USER_AGENT" \
     -d "client_id=$CLIENT_ID" \
@@ -879,7 +883,7 @@ while [ $POLL_COUNT -lt $MAX_POLLS ]; do
         echo -n "."
     fi
     
-    TOKEN_RESPONSE=$(curl -s -X POST "$TOKEN_URL" \
+    TOKEN_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$TOKEN_URL" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -H "User-Agent: $USER_AGENT" \
         -d "client_id=$CLIENT_ID" \
@@ -928,7 +932,7 @@ fi
 
 # Step 4: Get Available Profiles
 log_step "4" "Fetching available profiles..."
-PROFILES_RESPONSE=$(curl -s -X GET "$PROFILES_URL" \
+PROFILES_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X GET "$PROFILES_URL" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -H "User-Agent: $USER_AGENT") || error_exit "Failed to fetch profiles"
 
@@ -956,7 +960,7 @@ log_info "Found profile: $PROFILE_USERNAME ($PROFILE_UUID)"
 
 # Step 5: Create Game Session
 log_step "5" "Creating game session..."
-SESSION_RESPONSE=$(curl -s -X POST "$SESSION_URL" \
+SESSION_RESPONSE=$(curl -s --connect-timeout 15 --max-time 60 -X POST "$SESSION_URL" \
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
     -H "User-Agent: $USER_AGENT" \
