@@ -115,7 +115,8 @@ curl_secret() {
     shift 2
     case "$value" in
         *'"'*|*\\*|*'
-'*) log_error "Refusing to pass a value with quotes, backslashes or line breaks to curl"; return 1 ;;
+'*|*"$(printf '\r')"*)
+            log_error "Refusing to pass a value with quotes, backslashes or line breaks to curl"; return 1 ;;
     esac
     printf '%s = "%s"\n' "$option" "$value" | curl -K - "$@"
 }
@@ -397,7 +398,8 @@ commit_auth_file() {
 
 # Update only the refresh token in auth file $1
 save_refresh_token() {
-    jq --arg t "$2" '.refresh_token = $t' "$1" > "$1.tmp" && commit_auth_file "$1"
+    # Via the environment, not --arg: command lines are readable with ps
+    HY_REFRESH_TOKEN="$2" jq '.refresh_token = env.HY_REFRESH_TOKEN' "$1" > "$1.tmp" && commit_auth_file "$1"
 }
 
 # Try to refresh tokens (returns 0 on success, 1 on failure, doesn't exit)
@@ -567,22 +569,24 @@ try_refresh_tokens() {
     
     # Save updated credentials
     if [ "$USE_JQ" = true ]; then
-        jq -n \
-            --arg access_token "$access_token" \
-            --arg refresh_token "$new_refresh_token" \
-            --arg session_token "$session_token" \
-            --arg identity_token "$identity_token" \
-            --arg owner_uuid "$profile_uuid" \
-            --arg owner_name "$profile_username" \
-            --arg expires_at "$expires_at" \
+        # Values via the environment, not --arg: any user on the host can read
+        # command lines with ps, but not the environment of another user's process
+        HY_ACCESS_TOKEN="$access_token" \
+            HY_REFRESH_TOKEN="$new_refresh_token" \
+            HY_SESSION_TOKEN="$session_token" \
+            HY_IDENTITY_TOKEN="$identity_token" \
+            HY_OWNER_UUID="$profile_uuid" \
+            HY_OWNER_NAME="$profile_username" \
+            HY_EXPIRES_AT="$expires_at" \
+            jq -n \
             '{
-                access_token: $access_token,
-                refresh_token: $refresh_token,
-                session_token: $session_token,
-                identity_token: $identity_token,
-                owner_uuid: $owner_uuid,
-                owner_name: $owner_name,
-                expires_at: $expires_at
+                access_token: env.HY_ACCESS_TOKEN,
+                refresh_token: env.HY_REFRESH_TOKEN,
+                session_token: env.HY_SESSION_TOKEN,
+                identity_token: env.HY_IDENTITY_TOKEN,
+                owner_uuid: env.HY_OWNER_UUID,
+                owner_name: env.HY_OWNER_NAME,
+                expires_at: env.HY_EXPIRES_AT
             }' > "$auth_file.tmp" || return 1
     else
         cat > "$auth_file.tmp" <<EOF || return 1
@@ -737,22 +741,24 @@ refresh_tokens() {
     
     # Save updated credentials
     if [ "$USE_JQ" = true ]; then
-        jq -n \
-            --arg access_token "$access_token" \
-            --arg refresh_token "$new_refresh_token" \
-            --arg session_token "$session_token" \
-            --arg identity_token "$identity_token" \
-            --arg owner_uuid "$profile_uuid" \
-            --arg owner_name "$profile_username" \
-            --arg expires_at "$expires_at" \
+        # Values via the environment, not --arg: any user on the host can read
+        # command lines with ps, but not the environment of another user's process
+        HY_ACCESS_TOKEN="$access_token" \
+            HY_REFRESH_TOKEN="$new_refresh_token" \
+            HY_SESSION_TOKEN="$session_token" \
+            HY_IDENTITY_TOKEN="$identity_token" \
+            HY_OWNER_UUID="$profile_uuid" \
+            HY_OWNER_NAME="$profile_username" \
+            HY_EXPIRES_AT="$expires_at" \
+            jq -n \
             '{
-                access_token: $access_token,
-                refresh_token: $refresh_token,
-                session_token: $session_token,
-                identity_token: $identity_token,
-                owner_uuid: $owner_uuid,
-                owner_name: $owner_name,
-                expires_at: $expires_at
+                access_token: env.HY_ACCESS_TOKEN,
+                refresh_token: env.HY_REFRESH_TOKEN,
+                session_token: env.HY_SESSION_TOKEN,
+                identity_token: env.HY_IDENTITY_TOKEN,
+                owner_uuid: env.HY_OWNER_UUID,
+                owner_name: env.HY_OWNER_NAME,
+                expires_at: env.HY_EXPIRES_AT
             }' > "$auth_file.tmp"
     else
         cat > "$auth_file.tmp" <<EOF
@@ -1009,22 +1015,24 @@ fi
 # Create JSON file
 # Use PROFILE_UUID as owner_uuid to match the UUID in the tokens
 if [ "$USE_JQ" = true ]; then
-    jq -n \
-        --arg access_token "$ACCESS_TOKEN" \
-        --arg refresh_token "$REFRESH_TOKEN" \
-        --arg session_token "$SESSION_TOKEN" \
-        --arg identity_token "$IDENTITY_TOKEN" \
-        --arg owner_uuid "$PROFILE_UUID" \
-        --arg owner_name "$PROFILE_USERNAME" \
-        --arg expires_at "$EXPIRES_AT" \
+    # Values via the environment, not --arg: any user on the host can read
+    # command lines with ps, but not the environment of another user's process
+    HY_ACCESS_TOKEN="$ACCESS_TOKEN" \
+        HY_REFRESH_TOKEN="$REFRESH_TOKEN" \
+        HY_SESSION_TOKEN="$SESSION_TOKEN" \
+        HY_IDENTITY_TOKEN="$IDENTITY_TOKEN" \
+        HY_OWNER_UUID="$PROFILE_UUID" \
+        HY_OWNER_NAME="$PROFILE_USERNAME" \
+        HY_EXPIRES_AT="$EXPIRES_AT" \
+        jq -n \
         '{
-            access_token: $access_token,
-            refresh_token: $refresh_token,
-            session_token: $session_token,
-            identity_token: $identity_token,
-            owner_uuid: $owner_uuid,
-            owner_name: $owner_name,
-            expires_at: $expires_at
+            access_token: env.HY_ACCESS_TOKEN,
+            refresh_token: env.HY_REFRESH_TOKEN,
+            session_token: env.HY_SESSION_TOKEN,
+            identity_token: env.HY_IDENTITY_TOKEN,
+            owner_uuid: env.HY_OWNER_UUID,
+            owner_name: env.HY_OWNER_NAME,
+            expires_at: env.HY_EXPIRES_AT
         }' > "$AUTH_FILE.tmp"
 else
     # Manual JSON construction (fallback)

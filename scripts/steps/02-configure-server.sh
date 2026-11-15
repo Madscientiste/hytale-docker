@@ -74,16 +74,19 @@ log_info "Updating configuration from environment variables..."
 CHANGES_MADE=false
 
 # Set one config key from an environment value.
-# Values are passed to jq as data (--arg/--argjson), never pasted into the
-# filter, so quotes, backslashes and other characters are kept exactly.
+# Values are passed to jq as data through the environment, never pasted into
+# the filter, so quotes, backslashes and other characters are kept exactly.
+# Not --arg: values such as SERVER_PASSWORD would show on jq's command line,
+# which any user on the host can read with ps.
+# A number goes through fromjson, which, like --argjson, rejects bad input.
 #   set_config <jq path> <value> <string|number> <label>
 set_config() {
     local path="$1" value="$2" type="$3" label="$4"
     log_debug "Setting ${label}"
     if [ "$type" = "number" ]; then
-        jq --argjson v "$value" "${path} = \$v" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null
+        HY_VALUE="$value" jq "${path} = (env.HY_VALUE | fromjson)" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null
     else
-        jq --arg v "$value" "${path} = \$v" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null
+        HY_VALUE="$value" jq "${path} = env.HY_VALUE" "$TEMP_CONFIG" > "${TEMP_CONFIG}.new" 2>/dev/null
     fi
     if [ $? -eq 0 ]; then
         mv "${TEMP_CONFIG}.new" "$TEMP_CONFIG"
