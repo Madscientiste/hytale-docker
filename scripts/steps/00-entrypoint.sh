@@ -19,6 +19,7 @@ rm -f "$HYTALE_PID_FILE" "$HYTALE_RESTART_FLAG" "$HYTALE_RESTART_PENDING" "$HYTA
 # Any other server exit ends the container, as before.
 
 SERVER_PID=""
+STEP_PID=""
 STOPPING=false
 SCHEDULER_PID=""
 
@@ -28,9 +29,27 @@ stop_container() {
         log_info "Stop requested, shutting down the server..."
         kill -TERM "$SERVER_PID" 2>/dev/null || true
     else
-        # Nothing to shut down gracefully (still in a startup step)
+        # Still in a startup step (login, download...): nothing to save, stop now
+        [ -n "$STEP_PID" ] && kill -TERM "$STEP_PID" 2>/dev/null
+        log_info "Stop requested during startup, stopping"
         exit 143
     fi
+}
+
+# Run a startup step in the background and wait for it: the shell runs the
+# TERM trap only between commands, so a foreground step (such as waiting for a
+# browser login) would delay `docker stop` until Docker kills the container.
+run_step() {
+    local rc=0
+    "$@" 0<&3 &
+    STEP_PID=$!
+    wait "$STEP_PID" || rc=$?
+    while kill -0 "$STEP_PID" 2>/dev/null; do
+        rc=0
+        wait "$STEP_PID" || rc=$?
+    done
+    STEP_PID=""
+    return "$rc"
 }
 trap stop_container TERM INT
 trap '[ -n "$SCHEDULER_PID" ] && kill "$SCHEDULER_PID" 2>/dev/null; rm -f "$HYTALE_PID_FILE"' EXIT
@@ -48,25 +67,25 @@ while :; do
 
     # Step 1: Check and run authentication if needed
     log_step "1" "Authenticating with Hytale"
-    with_auth_lock sh /usr/local/bin/hy-auth.sh -o "${HYTALE_DATA_DIR}/auth.json"
+    run_step with_auth_lock sh /usr/local/bin/hy-auth.sh -o "${HYTALE_DATA_DIR}/auth.json"
 
     # Step 2: Download server files if needed
     log_step "2" "Checking server files"
-    "${SCRIPT_DIR}/01-download-server.sh"
+    run_step "${SCRIPT_DIR}/01-download-server.sh"
 
     # Step 3: Configure server from environment variables
     log_step "3" "Configuring server"
-    "${SCRIPT_DIR}/02-configure-server.sh"
+    run_step "${SCRIPT_DIR}/02-configure-server.sh"
 
     # Step 4: Setup RCON plugin
     log_step "4" "Setting up RCON plugin"
-    "${SCRIPT_DIR}/04-setup-rcon.sh"
+    run_step "${SCRIPT_DIR}/04-setup-rcon.sh"
 
     # Step 4b: Download mods listed in MODS
-    "${SCRIPT_DIR}/05-install-mods.sh"
+    run_step "${SCRIPT_DIR}/05-install-mods.sh"
 
     # Step 4c: Hytale's recommended plugins (ENABLE_WEBSERVER etc.)
-    "${SCRIPT_DIR}/06-install-plugins.sh"
+    run_step "${SCRIPT_DIR}/06-install-plugins.sh"
 
     # Step 5: Load authentication credentials
     log_step "5" "Loading authentication credentials"
