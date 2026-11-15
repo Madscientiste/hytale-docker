@@ -294,8 +294,9 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
     if echo "$EXISTING_CONFIG" | jq empty 2>/dev/null; then
         # Merge: environment variables override existing config
         RCON_CONFIG_JSON=$(echo "$EXISTING_CONFIG" | jq --argjson new_config "$RCON_CONFIG_JSON" '. + $new_config')
-        # Newer plugin versions keep RCON off when the file has a key they do
-        # not know; keys added by hand are kept, so only warn
+        # The next plugin release keeps RCON off when the file has a key it
+        # does not know (1.1.x ignores them); keys added by hand are kept, so
+        # only warn
         UNKNOWN_KEYS=$(echo "$RCON_CONFIG_JSON" | jq -r '[keys[] | select(IN("host", "port",
             "maxConnections", "maxFrameSize", "readTimeoutMs", "connectionTimeoutMs", "passwordHash",
             "maxConnectionsPerIp", "authTimeoutMs", "authMaxFailures", "authFailureWindowMs",
@@ -308,8 +309,8 @@ fi
 
 # Write configuration file. It holds the password hash, so only the server
 # user may read it (umask for a new file, chmod for an old .tmp left behind);
-# mv keeps that mode. Keep to the keys the plugin knows: it treats an unknown
-# key as a broken config and keeps RCON off.
+# mv keeps that mode. Keep to the keys the plugin knows: the next plugin
+# release treats an unknown key as a broken config and keeps RCON off.
 TEMP_RCON_CONFIG="${RCON_CONFIG_FILE}.tmp"
 if (umask 077; printf '%s\n' "$RCON_CONFIG_JSON" | jq . > "$TEMP_RCON_CONFIG") 2>/dev/null \
     && chmod 600 "$TEMP_RCON_CONFIG" && jq empty "$TEMP_RCON_CONFIG" 2>/dev/null; then

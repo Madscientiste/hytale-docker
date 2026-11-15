@@ -118,7 +118,8 @@ check_prerequisites() {
 # =============================================================================
 # Runtime state shared by the supervisor (00-entrypoint.sh), hy-restart and
 # hy-scheduler. Lives in /tmp; /tmp survives `docker restart`, so the
-# entrypoint clears these files on every start.
+# entrypoint clears the files below on every start. Two are kept on purpose:
+# server-version (a cache, keyed by the jar) and restarted-for (hy-scheduler).
 # =============================================================================
 HYTALE_RUN_DIR="/tmp/hytale"
 HYTALE_PID_FILE="${HYTALE_RUN_DIR}/server.pid"
