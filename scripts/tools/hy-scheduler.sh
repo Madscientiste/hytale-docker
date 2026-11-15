@@ -64,7 +64,9 @@ run_on_update() {
     log_info "Automatic restart on update: checking every ${RESTART_CHECK_MINUTES} minutes"
     # The version a restart was already started for. In a file, not a
     # variable: a failed download ends the container, and /tmp survives the
-    # restart policy bringing it back
+    # restart policy bringing it back (not a recreated container or a tmpfs
+    # /tmp). A restart that did not install the version is tried again once a
+    # day, not at every check.
     local current latest restarted_for_file="${HYTALE_RUN_DIR}/restarted-for"
     while :; do
         sleep $((RESTART_CHECK_MINUTES * 60))
@@ -76,10 +78,9 @@ run_on_update() {
         latest=$(latest_version)
         if [ -z "$current" ] || [ -z "$latest" ]; then
             log_warn "Update check skipped: could not read the installed or latest version"
-        elif [ "$current" != "$latest" ] && [ "$latest" = "$(cat "$restarted_for_file" 2>/dev/null)" ]; then
-            # A restart for this version already ran and did not install it;
-            # do not restart again every check
-            log_warn "Server ${latest} is out, but the restart for it left ${current} installed; not restarting again for it (see the startup logs)"
+        elif [ "$current" != "$latest" ] && [ "$latest" = "$(cat "$restarted_for_file" 2>/dev/null)" ] \
+            && [ -n "$(find "$restarted_for_file" -mmin -1440 2>/dev/null)" ]; then
+            log_warn "Server ${latest} is out, but the restart for it left ${current} installed; trying again within 24 hours (see the startup logs)"
         elif [ "$current" != "$latest" ]; then
             log_info "New server version ${latest} available (installed: ${current})"
             hy-restart --reason "update to ${latest}" && echo "$latest" > "$restarted_for_file"

@@ -35,7 +35,7 @@ Off by default. Set `RESTART_MODE` to let the container restart the server on it
 |---|---|
 | `off` (default) | No automatic restarts. Use `hy-restart` by hand. |
 | `schedule` | Restart every day at `RESTART_TIME`. |
-| `on-update` | Check every `RESTART_CHECK_MINUTES` for a new version, and restart when one is available. Only with `VERSION=LATEST`. |
+| `on-update` | Check every `RESTART_CHECK_MINUTES` for a new version, and restart when one is available. Only with `VERSION=LATEST`. If the restart does not install the new version (for example, the download failed), it tries again after 24 hours, not at every check. |
 
 ```yaml
 environment:
