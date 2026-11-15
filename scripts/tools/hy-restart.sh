@@ -58,8 +58,12 @@ say() {
 
 if [ "${CANCEL:-false}" = true ]; then
     pid=$(pending_pid) || { log_info "No restart is pending"; exit 0; }
-    # Fails when the countdown belongs to another user (e.g. started as root)
-    kill "$pid" 2>/dev/null || error_exit "Could not stop the pending restart (process $pid). Run hy-restart --cancel as the same user that started it, e.g. docker exec -u root"
+    # Fails when the countdown belongs to another user (e.g. started as root),
+    # or when it just ended by itself
+    if ! kill "$pid" 2>/dev/null; then
+        [ -d "/proc/$pid" ] || { log_info "No restart is pending"; exit 0; }
+        error_exit "Could not stop the pending restart (process $pid). Run hy-restart --cancel as the same user that started it, e.g. docker exec -u root"
+    fi
     rm -f "$HYTALE_RESTART_PENDING"
     say "Server restart cancelled."
     log_success "Pending restart cancelled"
@@ -75,16 +79,17 @@ if pid=$(pending_pid); then
 fi
 
 mkdir -p "$HYTALE_RUN_DIR"
-# set -C: fail if the file exists, so of two hy-restart calls at once only one
-# counts down
-claim_marker() { ( set -C; echo $$ > "$HYTALE_RESTART_PENDING" ) 2>/dev/null; }
-if ! claim_marker; then
-    pending_pid >/dev/null && error_exit "A restart is already pending. Cancel it first with: hy-restart --cancel"
-    # A stale marker (its process is gone) may belong to another user, e.g.
-    # root from docker exec; removing it only needs write access to the folder
-    rm -f "$HYTALE_RESTART_PENDING"
-    claim_marker || error_exit "Cannot write $HYTALE_RESTART_PENDING"
-fi
+# Of two hy-restart calls at once only one may count down. The lock is the
+# folder itself (open read-only), so root and the server user share it.
+exec 9< "$HYTALE_RUN_DIR"
+flock 9 || error_exit "Cannot lock $HYTALE_RUN_DIR"
+pending_pid >/dev/null && error_exit "A restart is already pending. Cancel it first with: hy-restart --cancel"
+# A stale marker (its process is gone) may belong to another user, e.g. root
+# from docker exec; removing it only needs write access to the folder
+rm -f "$HYTALE_RESTART_PENDING"
+echo $$ > "$HYTALE_RESTART_PENDING" || error_exit "Cannot write $HYTALE_RESTART_PENDING"
+flock -u 9
+exec 9<&-
 SLEEP_PID=""
 # Remove the marker only while it is still ours: a cancelled countdown must
 # not delete the marker of a newer one
