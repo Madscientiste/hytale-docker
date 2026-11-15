@@ -77,7 +77,7 @@ docker compose up -d   # apply changes
 
 ### Updating Your Server
 
-The server updates only when it restarts, and only when `VERSION=LATEST` (the default). Pin a version (for example `VERSION=0.7.7`) to stay on it.
+The server updates only when it restarts, and only when `VERSION=LATEST` (the default). Pin a version (for example `VERSION=0.7.7`) to stay on it. To switch an installed server to the pinned version, start once with `FORCE_DOWNLOAD=true`.
 
 **Restart (and update) without stopping the container:**
 ```bash
@@ -100,7 +100,15 @@ If you use your own `docker-compose.yml` from back then, change these RCON lines
 | `RCON_PASSWORD=verysecurepassword` | delete it | A random password is made and saved in `data/.rcon-password` |
 | `RCON_VERSION=latest` | delete it | The image then installs the RCON plugin it was tested with and checks its checksum |
 
-Also add `stop_grace_period: 60s` so the world is saved when the container stops. Using a `.env` file with this repository's `docker-compose.yml` needs Docker Compose 2.24 or newer.
+Also add `stop_grace_period: 60s` so the world is saved when the container stops.
+
+What else changes when you update:
+
+- **Four recommended plugins are installed** (web server, Query, metrics, PerformanceSaver). PerformanceSaver lowers the tick rate and view radius when the server is under load. Turn any of them off with `ENABLE_WEBSERVER=false`, `ENABLE_QUERY=false`, `ENABLE_METRICS=false` or `ENABLE_PERFORMANCE_SAVER=false`. See [Recommended plugins](docs/env-variables.md#recommended-plugins).
+- **An empty `RCON_PASSWORD` now means a random password**, not "no password".
+- **The image has a health check**, shown as `healthy` or `unhealthy` in `docker ps`.
+- **A pinned `VERSION` is not downloaded over an installed server.** Start once with `FORCE_DOWNLOAD=true` to switch versions.
+- **Still on a January 2026 server build?** The RCON plugin this image installs (1.1.1) was built for both, but was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
 
 ## Documentation
 
