@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://hytale.com/_astro/logo-h.DGX5BvcL.webp" alt="Hytale logo" width="120">
+  <img src="docs/images/hytale-logo.png" alt="Hytale logo" width="120">
 </div>
 
 # Hytale Server Containerized
