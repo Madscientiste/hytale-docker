@@ -82,7 +82,8 @@ The server updates only when it restarts, and only when `VERSION=LATEST` (the de
 
 **Restart (and update) without stopping the container:**
 ```bash
-docker exec hytale hy-restart          # warns players, restarts in 5 minutes
+docker exec hytale hy-restart          # warns players, restarts in 5 minutes (stays open until then)
+docker exec -d hytale hy-restart       # same, but returns at once
 docker exec hytale hy-restart --now    # restarts immediately
 docker exec hytale hy-restart --cancel # cancels a pending restart
 ```
@@ -112,7 +113,7 @@ What else changes when you update:
 - **RCON plugin 1.2.0 logs a warning at every start** because `RCON_HOST=0.0.0.0` is not a loopback address. In Docker this is expected: the port line keeps RCON on this host. See [Who can connect](docs/rcon.md#who-can-connect).
 - **New password hashes use a slow, safer format** (`pbkdf2-sha512:...`). An old `RCON_PASSWORD_HASH` still works, but the plugin warns about it at every start: make a new one with `gen-psswd`. If you also set `RCON_PASSWORD`, it must match the hash, or the container stops.
 - **RCON numbers are checked.** A value outside the plugin's range (for example `RCON_READ_TIMEOUT_MS` above 300000) stops the container with an error, instead of RCON silently staying off. With an `RCON_VERSION` older than 1.2.0, only whole numbers are checked.
-- **Still on a January 2026 server build?** The RCON plugin this image installs (1.2.0) was built for both, but was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
+- **Still on a January 2026 server build?** The RCON plugin this image installs (1.2.0) was built for January 2026 builds and for 0.7.7. It was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
 
 ## Documentation
 
@@ -139,6 +140,7 @@ What else changes when you update:
 hytale-docker/
 ├── Dockerfile              # Container definition
 ├── docker-compose.yml      # Docker Compose configuration
+├── .env.example            # Settings template (copy to .env)
 ├── scripts/
 │   ├── steps/              # Startup sequence scripts
 │   │   ├── 00-c-init.sh    # Runs as root: machine ID, HOST_UID/HOST_GID, then the entrypoint
