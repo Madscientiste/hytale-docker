@@ -12,7 +12,8 @@
 // failure. "No" is 10, not 1, because a JVM that cannot start exits with 1.
 //
 // The password is read from stdin, exactly as given (no newline is removed),
-// and the hash from the environment, so neither shows on a command line. The image compiles this file at build time (see the Dockerfile);
+// and the hash from the environment, so neither shows on a command line. The
+// image compiles this file at build time (see the Dockerfile);
 // scripts/steps/_common.sh calls it.
 
 import java.nio.charset.StandardCharsets;

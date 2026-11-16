@@ -164,7 +164,8 @@ rcon_hash_problem() {
     case "$rc" in
         0) ;;
         10) printf '%s\n' "$problem" ;;
-        *) return 1 ;;
+        # Run it again with its errors shown, so the log says why it failed
+        *) RCON_CHECK_HASH="$1" $RCON_HASH_HELPER --validate >/dev/null; return 1 ;;
     esac
 }
 
