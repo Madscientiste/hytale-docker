@@ -300,7 +300,7 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
             "maxConnections", "maxFrameSize", "readTimeoutMs", "connectionTimeoutMs", "passwordHash",
             "maxConnectionsPerIp", "authTimeoutMs", "authMaxFailures", "authFailureWindowMs",
             "authBanMs", "allowNoPassword", "noPasswordAllowFrom") | not)] | join(", ")')
-        [ -z "$UNKNOWN_KEYS" ] || log_warn "$RCON_CONFIG_FILE has keys the RCON plugin may not know: ${UNKNOWN_KEYS}. If RCON does not start, remove them."
+        [ -z "$UNKNOWN_KEYS" ] || log_warn "$RCON_CONFIG_FILE has keys RCON plugin 1.2.0 does not know: ${UNKNOWN_KEYS}. RCON stays off until you remove them (other RCON_VERSION values may accept them)."
     else
         log_warn "Existing config file is invalid JSON, creating new one"
     fi
