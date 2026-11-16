@@ -35,6 +35,7 @@ Create a `docker-compose.yml` file:
 services:
   hytale:
     image: ghcr.io/madscientiste/hytale-docker:latest
+    # Or pin a release: ghcr.io/madscientiste/hytale-docker:1 (or :1.0.0)
     # Or build locally: build: .
     restart: unless-stopped
     stop_grace_period: 60s   # time to save the world when stopping
@@ -126,7 +127,6 @@ What else changes when you update:
 - **[RCON Setup](docs/rcon.md)** - Remote console configuration and security
 
 ### Reference
-- **[Update Management](docs/update-management.md)** - Automatic update checking and version control
 - **[Hytale API](docs/misc/hytale-api.md)** - API endpoints documentation
 - **[hy-auth CLI](docs/misc/hy-auth.md)** - OAuth2 authentication utility
 - **[hy-downloader CLI](docs/misc/hy-downloader.md)** - Server file download utility
@@ -141,6 +141,7 @@ hytale-docker/
 ├── docker-compose.yml      # Docker Compose configuration
 ├── scripts/
 │   ├── steps/              # Startup sequence scripts
+│   │   ├── 00-c-init.sh    # Runs as root: machine ID, HOST_UID/HOST_GID, then the entrypoint
 │   │   ├── 00-entrypoint.sh
 │   │   ├── 01-download-server.sh
 │   │   ├── 02-configure-server.sh
@@ -148,7 +149,10 @@ hytale-docker/
 │   │   ├── 04-setup-rcon.sh
 │   │   ├── 05-install-mods.sh
 │   │   ├── 06-install-plugins.sh
-│   │   └── 09-start-server.sh
+│   │   ├── 09-start-server.sh
+│   │   └── _common.sh      # Shared helpers (logging, RCON password, versions)
+│   ├── java/
+│   │   └── RconHash.java   # RCON password hasher, compiled at image build
 │   └── tools/              # Utility scripts
 │       ├── hy-auth.sh      # OAuth2 authentication tool
 │       ├── hy-downloader.sh # Server file downloader
