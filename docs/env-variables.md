@@ -709,7 +709,7 @@ RCON_CONNECTION_TIMEOUT_MS=5000
 
 ---
 
-The ranges above are the RCON plugin's own. A number outside its range stops the container with an error that names the variable: the plugin would refuse the whole config, and RCON would stay off.
+The ranges above are the RCON plugin's own. A number outside its range stops the container with an error that names the variable: the plugin would refuse the whole config, and RCON would stay off. With an `RCON_VERSION` older than 1.2.0, only whole numbers are checked.
 
 ---
 

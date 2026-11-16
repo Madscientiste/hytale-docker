@@ -110,7 +110,7 @@ What else changes when you update:
 - **A pinned `VERSION` now warns when another version is installed.** As before, it is not downloaded over an installed server: start once with `FORCE_DOWNLOAD=true` to switch versions.
 - **RCON plugin 1.2.0 logs a warning at every start** because `RCON_HOST=0.0.0.0` is not a loopback address. In Docker this is expected: the port line keeps RCON on this host. See [Who can connect](docs/rcon.md#who-can-connect).
 - **New password hashes use a slow, safer format** (`pbkdf2-sha512:...`). An old `RCON_PASSWORD_HASH` still works, but the plugin warns about it at every start: make a new one with `gen-psswd`. If you also set `RCON_PASSWORD`, it must match the hash, or the container stops.
-- **RCON numbers are checked.** A value outside the plugin's range (for example `RCON_READ_TIMEOUT_MS` above 300000) stops the container with an error, instead of RCON silently staying off.
+- **RCON numbers are checked.** A value outside the plugin's range (for example `RCON_READ_TIMEOUT_MS` above 300000) stops the container with an error, instead of RCON silently staying off. With an `RCON_VERSION` older than 1.2.0, only whole numbers are checked.
 - **Still on a January 2026 server build?** The RCON plugin this image installs (1.2.0) was built for both, but was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
 
 ## Documentation

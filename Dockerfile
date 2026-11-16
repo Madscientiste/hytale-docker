@@ -9,9 +9,8 @@ RUN apk add --no-cache git && \
     cp /go/bin/rcon-cli /usr/local/bin/rcon-cli
 
 # Build stage: the RCON password hasher (the final image has only a Java
-# runtime, no compiler). Class files are the same on every platform, so this
-# stage runs natively, not under emulation.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk-alpine AS rcon-hash-builder
+# runtime, no compiler)
+FROM eclipse-temurin:25-jdk-alpine AS rcon-hash-builder
 COPY scripts/java/RconHash.java /src/RconHash.java
 RUN javac -d /out /src/RconHash.java
 

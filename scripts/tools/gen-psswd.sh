@@ -52,12 +52,12 @@ else
         # Interactive mode - prompt for password
         log_info "Enter RCON password:"
         stty -echo
-        read -r PASSWORD
+        IFS= read -r PASSWORD
         stty echo
         echo ""
     else
         # Non-interactive mode - read from stdin
-        read -r PASSWORD
+        IFS= read -r PASSWORD
     fi
 fi
 

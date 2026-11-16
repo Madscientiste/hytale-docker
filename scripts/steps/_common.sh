@@ -154,18 +154,18 @@ is_rcon_legacy_hash() {
     printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]{43}='
 }
 
-# Print why plugin 1.2.0 would refuse hash $1; print nothing when it is fine
+# Print why plugin 1.2.0 would refuse hash $1; print nothing when it is fine.
+# Fails when the check itself fails. The hash goes through the environment,
+# not the command line.
 rcon_hash_problem() {
-    local iterations
-    if ! is_rcon_password_hash "$1"; then
-        echo "it is not a hash from gen-psswd (check for spaces or a missing part)"
-        return
-    fi
-    is_rcon_legacy_hash "$1" && return
-    iterations=$(printf '%s' "$1" | cut -d: -f2 | sed 's/^0*//')
-    if [ -z "$iterations" ] || [ "$iterations" -lt 10000 ] || [ "$iterations" -gt 1000000 ]; then
-        echo "its iteration count must be from 10000 to 1000000"
-    fi
+    local problem rc
+    problem=$(RCON_CHECK_HASH="$1" $RCON_HASH_HELPER --validate 2>/dev/null)
+    rc=$?
+    case "$rc" in
+        0) ;;
+        10) printf '%s\n' "$problem" ;;
+        *) return 1 ;;
+    esac
 }
 
 # The compiled RconHash helper (scripts/java/RconHash.java)
@@ -206,15 +206,19 @@ rcon_hash_password() {
     printf '%s:%s\n' "$salt" "$hash"
 }
 
-# True when the password on stdin matches hash $1 (either format). The hash
-# goes through the environment, not the command line.
+# Exit 0 when the password on stdin matches hash $1 (either format), 10 when
+# it does not, and another code when the check itself failed. The hash goes
+# through the environment, not the command line.
 rcon_password_matches() {
     RCON_CHECK_HASH="$1" $RCON_HASH_HELPER --check
 }
 
-# True when RCON plugin version $1 (e.g. "1.2.0") knows the pbkdf2 format
+# True when RCON plugin version $1 (e.g. "1.2.0") knows the pbkdf2 format.
+# A pre-release such as 1.2.0-rc1 counts as older than its release.
 rcon_plugin_has_pbkdf2() {
-    [ "$(printf '%s\n%s\n' 1.2.0 "$1" | sort -V | head -n 1)" = "1.2.0" ]
+    local release="${1%%-*}"
+    [ "$release" != "$1" ] && [ "$release" = "1.2.0" ] && return 1
+    [ "$(printf '%s\n%s\n' 1.2.0 "$release" | sort -V | head -n 1)" = "1.2.0" ]
 }
 
 # True when RCON is on and a plaintext password is known (not only a hash)

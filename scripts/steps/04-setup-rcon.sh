@@ -245,19 +245,25 @@ if [ -n "$RCON_PASSWORD_HASH" ]; then
     # rcon-cli, the health check and the restart warnings log in with
     # RCON_PASSWORD. A wrong one fails every 30 seconds, and after a few
     # failures the plugin bans logins from inside the container for minutes.
-    HASH_PROBLEM=$(rcon_hash_problem "$RCON_PASSWORD_HASH")
+    HASH_PROBLEM=$(rcon_hash_problem "$RCON_PASSWORD_HASH") ||
+        error_exit "Could not check RCON_PASSWORD_HASH: the hash check failed"
     [ -z "$HASH_PROBLEM" ] ||
         error_exit "RCON_PASSWORD_HASH cannot be used: ${HASH_PROBLEM}. The RCON plugin would refuse it and RCON would stay off."
     PLAINTEXT_PASSWORD=$(rcon_plain_password 2>/dev/null) || PLAINTEXT_PASSWORD=""
     # Checked with the same password the logins use
     if [ -n "$PLAINTEXT_PASSWORD" ]; then
-        printf '%s' "$PLAINTEXT_PASSWORD" | rcon_password_matches "$RCON_PASSWORD_HASH" ||
-            error_exit "RCON_PASSWORD does not match RCON_PASSWORD_HASH. Remove RCON_PASSWORD, or make the hash from it with gen-psswd."
+        printf '%s' "$PLAINTEXT_PASSWORD" | rcon_password_matches "$RCON_PASSWORD_HASH"
+        case $? in
+            0) ;;
+            10) error_exit "RCON_PASSWORD does not match RCON_PASSWORD_HASH. Remove RCON_PASSWORD, or make the hash from it with gen-psswd." ;;
+            *) error_exit "Could not compare RCON_PASSWORD with RCON_PASSWORD_HASH: the hash check failed" ;;
+        esac
     fi
 elif [ -n "$RCON_PASSWORD" ] && is_password_hash "$RCON_PASSWORD"; then
     PASSWORD_HASH="$RCON_PASSWORD"
     log_info "RCON_PASSWORD is already a hash, using it directly"
-    HASH_PROBLEM=$(rcon_hash_problem "$RCON_PASSWORD")
+    HASH_PROBLEM=$(rcon_hash_problem "$RCON_PASSWORD") ||
+        error_exit "Could not check the hash in RCON_PASSWORD: the hash check failed"
     [ -z "$HASH_PROBLEM" ] ||
         error_exit "RCON_PASSWORD looks like a hash but cannot be used: ${HASH_PROBLEM}."
 else
@@ -304,8 +310,8 @@ check_rcon_number() {
     eval "v=\${$name}"
     v=$(printf '%s' "$v" | sed 's/^0*\([0-9]\)/\1/')
     if [ -n "$HASH_OPTION" ]; then
-        printf '%s' "$v" | grep -qxE '[0-9]{1,9}' ||
-            error_exit "$name must be a whole number, got: $v"
+        printf '%s' "$v" | grep -qxE '[0-9]{1,10}' && [ "$v" -le 2147483647 ] ||
+            error_exit "$name must be a whole number up to 2147483647, got: $v"
     elif ! printf '%s' "$v" | grep -qxE '[0-9]{1,9}' || [ "$v" -lt "$min" ] || [ "$v" -gt "$max" ]; then
         error_exit "$name must be a whole number from $min to $max, got: $v (the RCON plugin refuses other values)"
     fi
