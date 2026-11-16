@@ -59,7 +59,7 @@ Then set `RCON_PASSWORD_HASH=<hash>`. With a hash only, the image cannot log in 
 
 `gen-psswd` reads the password from the prompt or stdin (`echo "$PW" | docker compose exec -T hytale gen-psswd`). Passing it as an argument also works, but then it shows in `ps` and your shell history.
 
-The hash looks like `pbkdf2-sha512:210000:...`. It needs plugin 1.2.0 or newer. For an older plugin (`RCON_VERSION=rcon-v1.1.x`), use `gen-psswd --old`. That old, fast format still works on 1.2.0, but the plugin warns about it at every start; make a new hash to stop the warning.
+The hash looks like `pbkdf2-sha512:210000:...`. It needs plugin 1.2.0 or newer. For an older plugin (for example `RCON_VERSION=rcon-v1.1.1`), use `gen-psswd --old`. That old, fast format still works on 1.2.0, but the plugin warns about it at every start; make a new hash to stop the warning.
 
 If you set both `RCON_PASSWORD` and `RCON_PASSWORD_HASH`, they must match. Otherwise the container stops with "RCON_PASSWORD does not match RCON_PASSWORD_HASH", so the image never logs in with a wrong password.
 

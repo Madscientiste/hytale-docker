@@ -142,15 +142,30 @@ RCON_PASSWORD_FILE="/data/.rcon-password"
 # True when $1 is a plugin password hash (a password such as "admin:hunter2"
 # is not one). Two formats:
 #   pbkdf2-sha512:<iterations>:<base64 salt>:<base64 hash>  (plugin 1.2.0+)
-#   <base64 16-byte salt>:<base64 32-byte SHA-256>           (old, all versions)
+#   <base64 salt>:<base64 32-byte SHA-256>                   (old, all versions)
 is_rcon_password_hash() {
-    printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]{43}=' && return 0
+    is_rcon_legacy_hash "$1" && return 0
     printf '%s' "$1" | grep -qxE 'pbkdf2-sha512:[0-9]{1,9}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}'
 }
 
-# True when $1 is an old-format hash (the only one plugins before 1.2.0 know)
+# True when $1 is an old-format hash (the only one plugins before 1.2.0 know).
+# The image makes a 16-byte salt; the plugins accept any length.
 is_rcon_legacy_hash() {
-    printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]{43}='
+    printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]{43}='
+}
+
+# Print why plugin 1.2.0 would refuse hash $1; print nothing when it is fine
+rcon_hash_problem() {
+    local iterations
+    if ! is_rcon_password_hash "$1"; then
+        echo "it is not a hash from gen-psswd (check for spaces or a missing part)"
+        return
+    fi
+    is_rcon_legacy_hash "$1" && return
+    iterations=$(printf '%s' "$1" | cut -d: -f2 | sed 's/^0*//')
+    if [ -z "$iterations" ] || [ "$iterations" -lt 10000 ] || [ "$iterations" -gt 1000000 ]; then
+        echo "its iteration count must be from 10000 to 1000000"
+    fi
 }
 
 # The compiled RconHash helper (scripts/java/RconHash.java)

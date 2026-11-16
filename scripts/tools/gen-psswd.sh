@@ -33,10 +33,14 @@ else
     }
 fi
 
+# --old may come before or after the password
 HASH_OPTION=""
 if [ "${1:-}" = "--old" ]; then
     HASH_OPTION="--old"
     shift
+elif [ "${2:-}" = "--old" ]; then
+    HASH_OPTION="--old"
+    set -- "$1"
 fi
 
 # Get password from argument or stdin

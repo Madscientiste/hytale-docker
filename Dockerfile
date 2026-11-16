@@ -9,8 +9,9 @@ RUN apk add --no-cache git && \
     cp /go/bin/rcon-cli /usr/local/bin/rcon-cli
 
 # Build stage: the RCON password hasher (the final image has only a Java
-# runtime, no compiler)
-FROM eclipse-temurin:25-jdk-alpine AS rcon-hash-builder
+# runtime, no compiler). Class files are the same on every platform, so this
+# stage runs natively, not under emulation.
+FROM --platform=$BUILDPLATFORM eclipse-temurin:25-jdk-alpine AS rcon-hash-builder
 COPY scripts/java/RconHash.java /src/RconHash.java
 RUN javac -d /out /src/RconHash.java
 
@@ -50,7 +51,9 @@ COPY --from=rcon-cli-builder /usr/local/bin/rcon-cli /usr/local/lib/rcon-cli/rco
 COPY --from=rcon-hash-builder /out/ /usr/local/lib/rcon-hash/
 RUN chmod +x /usr/local/lib/rcon-cli/rcon-cli && \
     /usr/local/lib/rcon-cli/rcon-cli --help > /dev/null && \
-    echo "rcon-cli installed successfully"
+    echo "rcon-cli installed successfully" && \
+    printf 'build-test' | java -cp /usr/local/lib/rcon-hash RconHash | grep -q '^pbkdf2-sha512:210000:' && \
+    echo "RCON password hasher installed successfully"
 
 # Create default hytale user (will be modified at runtime if HOST_UID/HOST_GID are set)
 RUN addgroup -g 1000 hytale && \

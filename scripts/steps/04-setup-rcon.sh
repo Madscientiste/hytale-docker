@@ -245,14 +245,21 @@ if [ -n "$RCON_PASSWORD_HASH" ]; then
     # rcon-cli, the health check and the restart warnings log in with
     # RCON_PASSWORD. A wrong one fails every 30 seconds, and after a few
     # failures the plugin bans logins from inside the container for minutes.
-    if [ -n "$RCON_PASSWORD" ] && ! is_password_hash "$RCON_PASSWORD"; then
-        printf '%s' "$RCON_PASSWORD" | rcon_password_matches "$RCON_PASSWORD_HASH" ||
+    HASH_PROBLEM=$(rcon_hash_problem "$RCON_PASSWORD_HASH")
+    [ -z "$HASH_PROBLEM" ] ||
+        error_exit "RCON_PASSWORD_HASH cannot be used: ${HASH_PROBLEM}. The RCON plugin would refuse it and RCON would stay off."
+    PLAINTEXT_PASSWORD=$(rcon_plain_password 2>/dev/null) || PLAINTEXT_PASSWORD=""
+    # Checked with the same password the logins use
+    if [ -n "$PLAINTEXT_PASSWORD" ]; then
+        printf '%s' "$PLAINTEXT_PASSWORD" | rcon_password_matches "$RCON_PASSWORD_HASH" ||
             error_exit "RCON_PASSWORD does not match RCON_PASSWORD_HASH. Remove RCON_PASSWORD, or make the hash from it with gen-psswd."
     fi
-    PLAINTEXT_PASSWORD=$(rcon_plain_password 2>/dev/null) || PLAINTEXT_PASSWORD=""
 elif [ -n "$RCON_PASSWORD" ] && is_password_hash "$RCON_PASSWORD"; then
     PASSWORD_HASH="$RCON_PASSWORD"
     log_info "RCON_PASSWORD is already a hash, using it directly"
+    HASH_PROBLEM=$(rcon_hash_problem "$RCON_PASSWORD")
+    [ -z "$HASH_PROBLEM" ] ||
+        error_exit "RCON_PASSWORD looks like a hash but cannot be used: ${HASH_PROBLEM}."
 else
     if [ -n "$RCON_PASSWORD" ]; then
         log_info "Using RCON_PASSWORD"
@@ -289,14 +296,20 @@ fi
 log_step "5" "Configuring RCON plugin"
 
 # Build RCON configuration JSON
-# The plugin refuses the whole config, and RCON stays off, when a number is
-# out of these ranges; stop here with a clear message instead
+# Plugin 1.2.0 refuses the whole config, and RCON stays off, when a number is
+# out of these ranges; stop here with a clear message instead. Older plugins
+# have no ranges, so they only need a whole number. Leading zeros are removed.
 check_rcon_number() {
     local name="$1" min="$2" max="$3" v
     eval "v=\${$name}"
-    if ! echo "$v" | grep -qE '^[1-9][0-9]{0,8}$' || [ "$v" -lt "$min" ] || [ "$v" -gt "$max" ]; then
+    v=$(printf '%s' "$v" | sed 's/^0*\([0-9]\)/\1/')
+    if [ -n "$HASH_OPTION" ]; then
+        printf '%s' "$v" | grep -qxE '[0-9]{1,9}' ||
+            error_exit "$name must be a whole number, got: $v"
+    elif ! printf '%s' "$v" | grep -qxE '[0-9]{1,9}' || [ "$v" -lt "$min" ] || [ "$v" -gt "$max" ]; then
         error_exit "$name must be a whole number from $min to $max, got: $v (the RCON plugin refuses other values)"
     fi
+    eval "$name=\$v"
 }
 check_rcon_number RCON_PORT 1 65535
 check_rcon_number RCON_MAX_CONNECTIONS 1 1000
@@ -332,7 +345,7 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
             "maxConnections", "maxFrameSize", "readTimeoutMs", "connectionTimeoutMs", "passwordHash",
             "maxConnectionsPerIp", "authTimeoutMs", "authMaxFailures", "authFailureWindowMs",
             "authBanMs", "allowNoPassword", "noPasswordAllowFrom") | not)] | join(", ")')
-        [ -z "$UNKNOWN_KEYS" ] || log_warn "$RCON_CONFIG_FILE has keys RCON plugin 1.2.0 does not know: ${UNKNOWN_KEYS}. RCON stays off until you remove them (other RCON_VERSION values may accept them)."
+        [ -z "$UNKNOWN_KEYS" ] || [ -n "$HASH_OPTION" ] || log_warn "$RCON_CONFIG_FILE has keys RCON plugin 1.2.0 does not know: ${UNKNOWN_KEYS}. RCON stays off until you remove them (other RCON_VERSION values may accept them)."
     else
         log_warn "Existing config file is invalid JSON, creating new one"
     fi
