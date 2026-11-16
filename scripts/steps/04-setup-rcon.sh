@@ -22,8 +22,8 @@ RCON_VERSION="${RCON_VERSION:-}"
 case "$RCON_VERSION" in
     [0-9]*|v[0-9]*) RCON_VERSION="rcon-v${RCON_VERSION#v}" ;;  # release tags are rcon-v<x>
 esac
-RCON_PINNED_TAG="rcon-v1.1.1"
-RCON_PINNED_SHA256="86fa51aff4ea19baab7322f4e48308b75d2b28bf358b1df1e3b91aa9b2b72413"
+RCON_PINNED_TAG="rcon-v1.2.0"
+RCON_PINNED_SHA256="e8a8759d5209c901d7d8e97efabeb6dd0f9e75c3c07e374096072bf7cb5612d0"
 EXPECTED_SHA256=""
 RCON_HOST="${RCON_HOST:-127.0.0.1}"
 RCON_PORT="${RCON_PORT:-25575}"
@@ -294,9 +294,8 @@ if [ -f "$RCON_CONFIG_FILE" ]; then
     if echo "$EXISTING_CONFIG" | jq empty 2>/dev/null; then
         # Merge: environment variables override existing config
         RCON_CONFIG_JSON=$(echo "$EXISTING_CONFIG" | HY_NEW_CONFIG="$RCON_CONFIG_JSON" jq '. + (env.HY_NEW_CONFIG | fromjson)')
-        # The next plugin release keeps RCON off when the file has a key it
-        # does not know (1.1.x ignores them); keys added by hand are kept, so
-        # only warn
+        # Plugin 1.2.0 keeps RCON off when the file has a key it does not
+        # know (1.1.x ignored them); keys added by hand are kept, so only warn
         UNKNOWN_KEYS=$(echo "$RCON_CONFIG_JSON" | jq -r '[keys[] | select(IN("host", "port",
             "maxConnections", "maxFrameSize", "readTimeoutMs", "connectionTimeoutMs", "passwordHash",
             "maxConnectionsPerIp", "authTimeoutMs", "authMaxFailures", "authFailureWindowMs",
@@ -309,8 +308,8 @@ fi
 
 # Write configuration file. It holds the password hash, so only the server
 # user may read it (umask for a new file, chmod for an old .tmp left behind);
-# mv keeps that mode. Keep to the keys the plugin knows: the next plugin
-# release treats an unknown key as a broken config and keeps RCON off.
+# mv keeps that mode. Keep to the keys the plugin knows: plugin 1.2.0
+# treats an unknown key as a broken config and keeps RCON off.
 TEMP_RCON_CONFIG="${RCON_CONFIG_FILE}.tmp"
 if (umask 077; printf '%s\n' "$RCON_CONFIG_JSON" | jq . > "$TEMP_RCON_CONFIG") 2>/dev/null \
     && chmod 600 "$TEMP_RCON_CONFIG" && jq empty "$TEMP_RCON_CONFIG" 2>/dev/null; then

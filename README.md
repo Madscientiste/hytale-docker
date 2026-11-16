@@ -108,7 +108,7 @@ What else changes when you update:
 - **An empty `RCON_PASSWORD` now means a random password**, not "no password".
 - **The image has a health check**, shown as `healthy` or `unhealthy` in `docker ps`.
 - **A pinned `VERSION` now warns when another version is installed.** As before, it is not downloaded over an installed server: start once with `FORCE_DOWNLOAD=true` to switch versions.
-- **Still on a January 2026 server build?** The RCON plugin this image installs (1.1.1) was built for both, but was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
+- **Still on a January 2026 server build?** The RCON plugin this image installs (1.2.0) was built for both, but was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
 
 ## Documentation
 
