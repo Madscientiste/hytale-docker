@@ -8,6 +8,12 @@ RUN apk add --no-cache git && \
     go install github.com/itzg/rcon-cli@${RCON_CLI_COMMIT} && \
     cp /go/bin/rcon-cli /usr/local/bin/rcon-cli
 
+# Build stage: the RCON password hasher (the final image has only a Java
+# runtime, no compiler)
+FROM eclipse-temurin:25-jdk-alpine AS rcon-hash-builder
+COPY scripts/java/RconHash.java /src/RconHash.java
+RUN javac -d /out /src/RconHash.java
+
 # Final stage: Hytale server image
 FROM eclipse-temurin:25-jre-alpine
 
@@ -41,6 +47,7 @@ RUN apk add --no-cache \
 # Copy rcon-cli from build stage; /usr/local/bin/rcon-cli is a wrapper that
 # finds the password (scripts/tools/rcon-cli.sh)
 COPY --from=rcon-cli-builder /usr/local/bin/rcon-cli /usr/local/lib/rcon-cli/rcon-cli
+COPY --from=rcon-hash-builder /out/ /usr/local/lib/rcon-hash/
 RUN chmod +x /usr/local/lib/rcon-cli/rcon-cli && \
     /usr/local/lib/rcon-cli/rcon-cli --help > /dev/null && \
     echo "rcon-cli installed successfully"

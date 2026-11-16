@@ -225,15 +225,30 @@ else
 fi
 
 # Password: RCON_PASSWORD_HASH > RCON_PASSWORD (plaintext or hash) > a random
-# password made once and kept in RCON_PASSWORD_FILE. The hash is computed in
-# the shell from stdin, so the password never shows on a command line.
+# password made once and kept in RCON_PASSWORD_FILE. The hash is computed from
+# stdin (scripts/java/RconHash.java), so the password never shows on a
+# command line.
 PASSWORD_HASH=""
 PLAINTEXT_PASSWORD=""
 
 log_step "4" "Setting the RCON password"
+# Plugin 1.2.0 and newer take the slow pbkdf2 format; older ones only the old,
+# fast one. A non-numeric version (a custom tag) is treated as new.
+HASH_OPTION=""
+case "$VERSION_NUMBER" in
+    [0-9]*) rcon_plugin_has_pbkdf2 "$VERSION_NUMBER" || HASH_OPTION="--old" ;;
+esac
+
 if [ -n "$RCON_PASSWORD_HASH" ]; then
     PASSWORD_HASH="$RCON_PASSWORD_HASH"
     log_info "Using RCON_PASSWORD_HASH"
+    # rcon-cli, the health check and the restart warnings log in with
+    # RCON_PASSWORD. A wrong one fails every 30 seconds, and after a few
+    # failures the plugin bans logins from inside the container for minutes.
+    if [ -n "$RCON_PASSWORD" ] && ! is_password_hash "$RCON_PASSWORD"; then
+        printf '%s' "$RCON_PASSWORD" | rcon_password_matches "$RCON_PASSWORD_HASH" ||
+            error_exit "RCON_PASSWORD does not match RCON_PASSWORD_HASH. Remove RCON_PASSWORD, or make the hash from it with gen-psswd."
+    fi
     PLAINTEXT_PASSWORD=$(rcon_plain_password 2>/dev/null) || PLAINTEXT_PASSWORD=""
 elif [ -n "$RCON_PASSWORD" ] && is_password_hash "$RCON_PASSWORD"; then
     PASSWORD_HASH="$RCON_PASSWORD"
@@ -258,19 +273,36 @@ else
     fi
     [ -f "$RCON_PASSWORD_FILE" ] && chmod 600 "$RCON_PASSWORD_FILE" 2>/dev/null
     PLAINTEXT_PASSWORD=$(rcon_plain_password) || error_exit "No RCON password available"
-    PASSWORD_HASH=$(printf '%s' "$PLAINTEXT_PASSWORD" | rcon_hash_password) ||
+    PASSWORD_HASH=$(printf '%s' "$PLAINTEXT_PASSWORD" | rcon_hash_password $HASH_OPTION) ||
         error_exit "Failed to hash the RCON password"
     log_success "Password hash generated"
+fi
+
+# A hash given by the user must suit the plugin version
+if [ -n "$HASH_OPTION" ] && ! is_rcon_legacy_hash "$PASSWORD_HASH"; then
+    error_exit "RCON plugin $VERSION_NUMBER only knows the old hash format. Make one with: gen-psswd --old"
+elif [ -z "$HASH_OPTION" ] && is_rcon_legacy_hash "$PASSWORD_HASH"; then
+    log_warn "The RCON password hash uses the old, fast format. It works, but the plugin warns about it at start. Make a new one with gen-psswd."
 fi
 
 # Create or update RCON configuration file
 log_step "5" "Configuring RCON plugin"
 
 # Build RCON configuration JSON
-for n in RCON_PORT RCON_MAX_CONNECTIONS RCON_MAX_FRAME_SIZE RCON_READ_TIMEOUT_MS RCON_CONNECTION_TIMEOUT_MS; do
-    eval "v=\${$n}"
-    echo "$v" | grep -qE '^[0-9]+$' || error_exit "$n must be a positive integer, got: $v"
-done
+# The plugin refuses the whole config, and RCON stays off, when a number is
+# out of these ranges; stop here with a clear message instead
+check_rcon_number() {
+    local name="$1" min="$2" max="$3" v
+    eval "v=\${$name}"
+    if ! echo "$v" | grep -qE '^[1-9][0-9]{0,8}$' || [ "$v" -lt "$min" ] || [ "$v" -gt "$max" ]; then
+        error_exit "$name must be a whole number from $min to $max, got: $v (the RCON plugin refuses other values)"
+    fi
+}
+check_rcon_number RCON_PORT 1 65535
+check_rcon_number RCON_MAX_CONNECTIONS 1 1000
+check_rcon_number RCON_MAX_FRAME_SIZE 64 1048576
+check_rcon_number RCON_READ_TIMEOUT_MS 1 300000
+check_rcon_number RCON_CONNECTION_TIMEOUT_MS 1 60000
 
 # Values are passed to jq as data, never pasted into the filter
 # The hash goes through the environment, not --arg (command lines are readable with ps)

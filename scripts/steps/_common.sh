@@ -139,11 +139,22 @@ RCON_ENABLED=$(printf '%s' "${RCON_ENABLED:-true}" | tr '[:upper:]' '[:lower:]')
 # Password made by the image when RCON_PASSWORD is not set (owner-only file)
 RCON_PASSWORD_FILE="/data/.rcon-password"
 
-# True when $1 is a plugin password hash: base64 of a 16-byte salt ":" base64
-# of a 32-byte SHA-256 (a password such as "admin:hunter2" is not one)
+# True when $1 is a plugin password hash (a password such as "admin:hunter2"
+# is not one). Two formats:
+#   pbkdf2-sha512:<iterations>:<base64 salt>:<base64 hash>  (plugin 1.2.0+)
+#   <base64 16-byte salt>:<base64 32-byte SHA-256>           (old, all versions)
 is_rcon_password_hash() {
+    printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]{43}=' && return 0
+    printf '%s' "$1" | grep -qxE 'pbkdf2-sha512:[0-9]{1,9}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}'
+}
+
+# True when $1 is an old-format hash (the only one plugins before 1.2.0 know)
+is_rcon_legacy_hash() {
     printf '%s' "$1" | grep -qxE '[A-Za-z0-9+/]{22}==:[A-Za-z0-9+/]{43}='
 }
+
+# The compiled RconHash helper (scripts/java/RconHash.java)
+RCON_HASH_HELPER="java -cp /usr/local/lib/rcon-hash RconHash"
 
 # Print the plaintext RCON password: RCON_PASSWORD, else the generated one.
 # Fails when only a hash is known.
@@ -160,10 +171,16 @@ rcon_plain_password() {
     printf '%s' "$saved"
 }
 
-# Hash the password read from stdin the way the RCON plugin checks it:
-# base64(salt) ":" base64(sha256(salt + password)), 16 random salt bytes.
-# The password never appears on a command line.
+# Hash the password read from stdin the way the RCON plugin checks it. The
+# password never appears on a command line.
+#   rcon_hash_password          pbkdf2-sha512, for plugin 1.2.0 and newer
+#   rcon_hash_password --old    base64(salt) ":" base64(sha256(salt + password)),
+#                               for older plugins (fast to crack if leaked)
 rcon_hash_password() {
+    if [ "${1:-}" != "--old" ]; then
+        $RCON_HASH_HELPER
+        return
+    fi
     local salt_file salt hash
     salt_file=$(mktemp) || return 1
     head -c 16 /dev/urandom > "$salt_file"
@@ -172,6 +189,17 @@ rcon_hash_password() {
     rm -f "$salt_file"
     [ -n "$salt" ] && [ -n "$hash" ] || return 1
     printf '%s:%s\n' "$salt" "$hash"
+}
+
+# True when the password on stdin matches hash $1 (either format). The hash
+# goes through the environment, not the command line.
+rcon_password_matches() {
+    RCON_CHECK_HASH="$1" $RCON_HASH_HELPER --check
+}
+
+# True when RCON plugin version $1 (e.g. "1.2.0") knows the pbkdf2 format
+rcon_plugin_has_pbkdf2() {
+    [ "$(printf '%s\n%s\n' 1.2.0 "$1" | sort -V | head -n 1)" = "1.2.0" ]
 }
 
 # True when RCON is on and a plaintext password is known (not only a hash)

@@ -5,6 +5,9 @@
 # Usage: gen-psswd            (asks for the password; recommended)
 #        echo PASSWORD | gen-psswd
 #        gen-psswd PASSWORD   (works, but the password shows in `ps` and shell history)
+#        gen-psswd --old ...  (the old, fast format, for RCON plugin 1.1.x)
+#
+# The default format (pbkdf2-sha512) needs RCON plugin 1.2.0 or newer.
 
 # Source common utilities
 # When installed in container, scripts are in /usr/local/bin and steps are in /init-container/
@@ -28,6 +31,12 @@ else
             fi
         done
     }
+fi
+
+HASH_OPTION=""
+if [ "${1:-}" = "--old" ]; then
+    HASH_OPTION="--old"
+    shift
 fi
 
 # Get password from argument or stdin
@@ -56,7 +65,7 @@ fi
 
 # Same hash the RCON plugin checks (see rcon_hash_password in _common.sh);
 # the password goes through stdin, never onto a command line
-PASSWORD_HASH=$(printf '%s' "$PASSWORD" | rcon_hash_password) || {
+PASSWORD_HASH=$(printf '%s' "$PASSWORD" | rcon_hash_password $HASH_OPTION) || {
     log_error "Failed to generate password hash"
     exit 1
 }
