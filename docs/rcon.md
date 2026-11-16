@@ -28,6 +28,8 @@ docker compose exec -it hytale rcon-cli      # interactive console
 
 `RCON_HOST` is the address the plugin listens on **inside** the container. Keep `0.0.0.0` so the published port works; the port line in `docker-compose.yml` decides who can reach it.
 
+With `0.0.0.0`, the plugin logs a warning at every start: "RCON is listening on 0.0.0.0, which is not a loopback address". In Docker this is expected; the port line keeps RCON on this host.
+
 ## Your own password
 
 To use your own password instead of the generated one:
@@ -57,6 +59,10 @@ Then set `RCON_PASSWORD_HASH=<hash>`. With a hash only, the image cannot log in 
 
 `gen-psswd` reads the password from the prompt or stdin (`echo "$PW" | docker compose exec -T hytale gen-psswd`). Passing it as an argument also works, but then it shows in `ps` and your shell history.
 
+The hash looks like `pbkdf2-sha512:210000:...`. It needs plugin 1.2.0 or newer. For an older plugin (`RCON_VERSION=rcon-v1.1.x`), use `gen-psswd --old`. That old, fast format still works on 1.2.0, but the plugin warns about it at every start; make a new hash to stop the warning.
+
+If you set both `RCON_PASSWORD` and `RCON_PASSWORD_HASH`, they must match. Otherwise the container stops with "RCON_PASSWORD does not match RCON_PASSWORD_HASH", so the image never logs in with a wrong password.
+
 ## Plugin version
 
 By default (`RCON_VERSION` empty) the image installs the plugin release it was tested with, and checks its sha256 checksum. A download that does not match is refused, and an installed jar that does not match is moved to `data/.disabled-plugins` and downloaded again.
@@ -77,7 +83,7 @@ Only one RCON plugin version is kept in `data/mods`; other versions are moved to
 | `RCON_PASSWORD` | empty | Your password; empty: a random one in `data/.rcon-password` |
 | `RCON_PASSWORD_HASH` | empty | Hash only (see above); wins over `RCON_PASSWORD` for the plugin |
 
-The plugin's own file is `data/configs/com.madscientiste.rcon.json`; the image updates it on every start. All options: [env-variables.md](env-variables.md#rcon-configuration).
+The plugin's own file is `data/configs/com.madscientiste.rcon.json`; the image updates it on every start. All options and their allowed ranges: [env-variables.md](env-variables.md#rcon-configuration). A number outside its range stops the container with an error, because the plugin would refuse the config and RCON would stay off.
 
 ## Disabling RCON
 

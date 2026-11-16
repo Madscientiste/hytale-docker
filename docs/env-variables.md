@@ -615,11 +615,13 @@ Other versions found in `/data/mods` are moved to `/data/.disabled-plugins`, so 
 
 RCON is not encrypted, and Docker's published ports bypass firewalls such as ufw: never publish it on all interfaces (`25575:25575`). See [rcon.md](rcon.md#who-can-connect).
 
+With `0.0.0.0`, plugin 1.2.0 logs a warning at every start ("RCON is listening on 0.0.0.0, which is not a loopback address"). In Docker this is expected: the port line keeps RCON on this host.
+
 ---
 
 ### `RCON_PORT`
 
-**Type:** Integer  
+**Type:** Integer, 1 to 65535  
 **Default:** `25575`  
 **Description:** Port number for the RCON server to listen on.
 
@@ -631,7 +633,7 @@ RCON is not encrypted, and Docker's published ports bypass firewalls such as ufw
 **Default:** empty  
 **Description:** Your RCON password. Empty: the image makes a random password once and saves it in `/data/.rcon-password` (mode 600). `rcon-cli` inside the container, the restart warnings and the health check use it by themselves.
 
-The image hashes the password in the shell from stdin, so it never appears on a command line. The old example value `verysecurepassword` logs a warning.
+The image hashes the password from stdin, so it never appears on a command line. The old example value `verysecurepassword` logs a warning.
 
 **Example:**
 ```bash
@@ -644,13 +646,20 @@ RCON_PASSWORD=MySecurePassword123
 
 **Type:** String  
 **Default:** empty  
-**Description:** A password hash (`base64salt:base64hash`, made with `docker compose exec hytale gen-psswd`). It wins over `RCON_PASSWORD` for the plugin. With a hash only, the image cannot log in itself: no restart warnings over RCON, and a process-only health check.
+**Description:** A password hash, made with `docker compose exec hytale gen-psswd`. It wins over `RCON_PASSWORD` for the plugin. With a hash only, the image cannot log in itself: no restart warnings over RCON, and a process-only health check.
+
+Two formats:
+
+- `pbkdf2-sha512:210000:<salt>:<hash>`: the default from `gen-psswd`. Needs plugin 1.2.0 or newer.
+- `<salt>:<hash>`: the old, fast format, from `gen-psswd --old`. Plugins before 1.2.0 know only this one. Plugin 1.2.0 still accepts it, but warns at every start.
+
+If you set both `RCON_PASSWORD` and `RCON_PASSWORD_HASH`, they must match. The container refuses to start when they don't: otherwise `rcon-cli`, the restart warnings and the health check would log in with the wrong password.
 
 ---
 
 ### `RCON_MAX_CONNECTIONS`
 
-**Type:** Integer  
+**Type:** Integer, 1 to 1000  
 **Default:** `10`  
 **Description:** Maximum number of concurrent RCON connections allowed.
 
@@ -663,7 +672,7 @@ RCON_MAX_CONNECTIONS=10
 
 ### `RCON_MAX_FRAME_SIZE`
 
-**Type:** Integer  
+**Type:** Integer, 64 to 1048576  
 **Default:** `4096`  
 **Description:** Maximum RCON frame size in bytes.
 
@@ -676,7 +685,7 @@ RCON_MAX_FRAME_SIZE=4096
 
 ### `RCON_READ_TIMEOUT_MS`
 
-**Type:** Integer  
+**Type:** Integer, 1 to 300000  
 **Default:** `30000`  
 **Description:** Read timeout for RCON connections in milliseconds.
 
@@ -689,7 +698,7 @@ RCON_READ_TIMEOUT_MS=30000
 
 ### `RCON_CONNECTION_TIMEOUT_MS`
 
-**Type:** Integer  
+**Type:** Integer, 1 to 60000  
 **Default:** `5000`  
 **Description:** Connection timeout for RCON connections in milliseconds.
 
@@ -697,6 +706,10 @@ RCON_READ_TIMEOUT_MS=30000
 ```bash
 RCON_CONNECTION_TIMEOUT_MS=5000
 ```
+
+---
+
+The ranges above are the RCON plugin's own. A number outside its range stops the container with an error that names the variable: the plugin would refuse the whole config, and RCON would stay off.
 
 ---
 
