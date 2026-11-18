@@ -26,7 +26,8 @@ hy-auth [OPTIONS] [OUTPUT_PATH]
 
 - `-o PATH`, `--output PATH`, `--save-credentials PATH`
   - Specify the output file path for saved credentials
-  - Default: `data/auth.json`
+  - Required: there is no default path. Without one, `hy-auth` stops with "Output path is required"
+  - `--refresh AUTH_FILE` and the old positional `OUTPUT_PATH` also give the path
   - Supports both `--save-credentials=path` and `--save-credentials path` formats
   - Creates parent directories if they don't exist
   - Validates write permissions before proceeding
@@ -47,7 +48,7 @@ hy-auth [OPTIONS] [OUTPUT_PATH]
 
 - `--refresh [AUTH_FILE]`
   - Refresh existing authentication tokens using stored refresh token
-  - If `AUTH_FILE` is not specified, uses default `data/auth.json`
+  - If `AUTH_FILE` is not specified, uses the path from `-o`
   - Reads refresh token from existing credentials file
   - Updates access token, session token, and identity token
   - Saves updated credentials to the same file
@@ -61,6 +62,14 @@ hy-auth [OPTIONS] [OUTPUT_PATH]
   - If first argument doesn't start with `-`, treat as positional output path for backward compatibility
 
 ## Authentication Flow
+
+### Existing Credentials
+
+When the output file already exists, `hy-auth` tries to reuse it first:
+
+1. If the session is valid for more than 5 more minutes, it changes nothing and exits.
+2. Otherwise it refreshes the tokens with the saved refresh token.
+3. If the refresh fails, it starts the browser login below.
 
 ### Standard Flow (Default)
 
@@ -93,7 +102,7 @@ hy-auth [OPTIONS] [OUTPUT_PATH]
 ### Refresh Flow (`--refresh`)
 
 1. **Load Existing Credentials**
-   - Reads credentials from specified or default auth file
+   - Reads credentials from the given auth file
    - Validates file exists and contains refresh token
 
 2. **Refresh Access Token**
@@ -143,10 +152,7 @@ Credentials are saved as JSON with the following structure:
 ### Basic Usage
 
 ```bash
-# Authenticate with default output path
-hy-auth
-
-# Authenticate with custom output path
+# Authenticate (the output path is required)
 hy-auth --output /path/to/auth.json
 
 # Authenticate with short option
@@ -168,22 +174,22 @@ hy-auth --version
 
 ```bash
 # Verbose output
-hy-auth --verbose
-hy-auth -v
+hy-auth --verbose -o /path/to/auth.json
+hy-auth -v -o /path/to/auth.json
 
 # Quiet mode (errors only)
-hy-auth --quiet
-hy-auth -q
+hy-auth --quiet -o /path/to/auth.json
+hy-auth -q -o /path/to/auth.json
 ```
 
 ### Token Refresh
 
 ```bash
-# Refresh using default auth file
-hy-auth --refresh
-
-# Refresh using custom auth file
+# Refresh the tokens in this file
 hy-auth --refresh /path/to/auth.json
+
+# Same, with the path from -o
+hy-auth -o /path/to/auth.json --refresh
 ```
 
 ### Combined Options
@@ -193,19 +199,19 @@ hy-auth --refresh /path/to/auth.json
 hy-auth -v -o /custom/path/auth.json
 
 # Quiet refresh
-hy-auth --quiet --refresh
+hy-auth --quiet --refresh /path/to/auth.json
 ```
 
 ## Backward Compatibility
 
 - Positional argument support maintained for existing scripts
 - If first argument doesn't start with `-`, treat as output path
-- Default behavior unchanged when no arguments provided
+- Without a path, `hy-auth` stops with an error
 
 ## Implementation Notes
 
 - POSIX shell compatible (`#!/bin/sh`)
-- Uses `_common.sh` for logging functions
+- Has its own copy of the logging functions; it does not load `_common.sh`
 - Supports both `jq` and basic shell JSON parsing
 - Handles OAuth 2.0 error responses according to RFC 8628
 - Validates all inputs before making API calls
@@ -230,7 +236,7 @@ hy-auth --quiet --refresh
 
 ## Security Considerations
 
-- Credentials stored in plain JSON (user responsible for file permissions)
+- Credentials are stored in plain JSON, readable only by their owner: `hy-auth` creates files with umask 077 and sets the file to mode 600
 - Refresh tokens should be protected
 - No credentials logged in verbose mode
 - File permissions validated before writing
