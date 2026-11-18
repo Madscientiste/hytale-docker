@@ -31,6 +31,14 @@ stop_container() {
     else
         # Still in a startup step (login, download...): nothing to save, stop now
         [ -n "$STEP_PID" ] && kill -TERM "$STEP_PID" 2>/dev/null
+        # Except the world check, which may be writing chunks: let it finish
+        # shutting down (it stops in seconds, well within stop_grace_period)
+        if [ -n "$STEP_PID" ] && [ "$(cut -d' ' -f1 "$HYTALE_STATE_FILE" 2>/dev/null)" = "verifying" ]; then
+            log_info "Stop requested during the world check, waiting for it to stop"
+            while kill -0 "$STEP_PID" 2>/dev/null; do
+                wait "$STEP_PID" 2>/dev/null
+            done
+        fi
         log_info "Stop requested during startup, stopping"
         exit 143
     fi
@@ -95,6 +103,9 @@ while :; do
     # Step 5: Load authentication credentials
     log_step "5" "Loading authentication credentials"
     . "${SCRIPT_DIR}/03-load-auth.sh"
+
+    # Step 5b: Check the server options; check the worlds when VERIFY_WORLDS=true
+    run_step "${SCRIPT_DIR}/07-server-options.sh"
 
     # Background jobs (automatic restarts), started once
     if [ -z "$SCHEDULER_PID" ]; then

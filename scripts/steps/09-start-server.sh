@@ -25,62 +25,33 @@ fi
 
 log_info "Server will use the Hytale login loaded in step 5 (refreshed automatically, see docs/authentication.md)"
 
-# Build JVM arguments from environment variables
-INIT_MEMORY="${INIT_MEMORY:-12G}"
-MAX_MEMORY="${MAX_MEMORY:-12G}"
+. "${SCRIPT_DIR}/_server-options.sh"
 
-# Build JVM command
-JVM_OPTS_BASE="-Xms${INIT_MEMORY} -Xmx${MAX_MEMORY}"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:+UseG1GC"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:MaxGCPauseMillis=200"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:+UnlockExperimentalVMOptions"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:+DisableExplicitGC"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:+UseStringDeduplication"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:G1NewSizePercent=30"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:G1MaxNewSizePercent=40"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:G1HeapRegionSize=32M"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:G1ReservePercent=20"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -XX:InitiatingHeapOccupancyPercent=15"
-JVM_OPTS_BASE="$JVM_OPTS_BASE -Dfile.encoding=UTF-8"
-JVM_OPTS_BASE="$JVM_OPTS_BASE --enable-native-access=ALL-UNNAMED"
+# Server options from the environment (see _server-options.sh). 07-server-
+# options.sh already checked them; a failure here stops the container too.
+option_args=$(server_option_args) || error_exit "Fix the setting above, then start the container again"
+backup_args=$(server_backup_args) || error_exit "Fix the setting above, then start the container again"
+eval "set -- $option_args $backup_args"
+# SERVER_ARGS: any other server option, split on spaces (no * expansion)
+set -f
+set -- "$@" ${SERVER_ARGS:-}
+set +f
 
-# Add additional JVM options if provided
-if [ -n "${JVM_OPTS:-}" ]; then
-    JVM_OPTS_BASE="$JVM_OPTS_BASE $JVM_OPTS"
-fi
-
-if [ -n "${JVM_XX_OPTS:-}" ]; then
-    JVM_OPTS_BASE="$JVM_XX_OPTS $JVM_OPTS_BASE"
-fi
-
-# AOT cache, when the download had one: faster startup. If it does not match
-# the jar or the JVM, Java prints a warning and starts normally without it.
+JVM_OPTS_BASE=$(server_jvm_options)
 if [ -f "${HYTALE_DATA_DIR}/HytaleServer.aot" ]; then
-    JVM_OPTS_BASE="-XX:AOTCache=HytaleServer.aot $JVM_OPTS_BASE"
     log_info "AOT cache: enabled (HytaleServer.aot)"
 else
     log_debug "AOT cache: HytaleServer.aot not found, starting without it"
 fi
 
-log_info "Memory: ${INIT_MEMORY} / ${MAX_MEMORY}"
+log_info "Memory: ${INIT_MEMORY:-12G} / ${MAX_MEMORY:-12G}"
 log_debug "JVM Options: $JVM_OPTS_BASE"
-
-# Configure backup settings
-ENABLE_BACKUPS="${ENABLE_BACKUPS:-true}"
-BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
-BACKUP_FREQUENCY="${BACKUP_FREQUENCY:-30}"
-BACKUP_MAX_COUNT="${BACKUP_MAX_COUNT:-5}"
-
-# Validate BACKUP_DIR is absolute (must start with /) and build backup flags
 if [ "$ENABLE_BACKUPS" = "true" ]; then
-    case "$BACKUP_DIR" in
-        /*) ;;
-        *) error_exit "BACKUP_DIR must be an absolute path (starting with /), got: $BACKUP_DIR" ;;
-    esac
     log_info "Backups enabled: dir=$BACKUP_DIR, frequency=${BACKUP_FREQUENCY}min, max=${BACKUP_MAX_COUNT}"
 else
     log_info "Backups disabled"
 fi
+log_debug "Server options: $*"
 
 # Change to data directory
 cd "${HYTALE_DATA_DIR}"
@@ -92,28 +63,9 @@ export HYTALE_SERVER_SESSION_TOKEN="$SESSION_TOKEN"
 export HYTALE_SERVER_IDENTITY_TOKEN="$IDENTITY_TOKEN"
 unset SESSION_TOKEN IDENTITY_TOKEN
 
-# Start server with authentication
 log_info "Starting Hytale server..."
-if [ "$ENABLE_BACKUPS" = "true" ]; then
-    exec java $JVM_OPTS_BASE \
-        -jar HytaleServer.jar \
-        --assets Assets.zip \
-        --owner-uuid "$OWNER_UUID" \
-        ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
-        ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
-        ${TRANSPORT_TYPE:+--transport "$TRANSPORT_TYPE"} \
-        ${AUTH_MODE:+--auth-mode "$AUTH_MODE"} \
-        --backup \
-        --backup-dir "$BACKUP_DIR" \
-        --backup-frequency "$BACKUP_FREQUENCY" \
-        --backup-max-count "$BACKUP_MAX_COUNT"
-else
-    exec java $JVM_OPTS_BASE \
-        -jar HytaleServer.jar \
-        --assets Assets.zip \
-        --owner-uuid "$OWNER_UUID" \
-        ${OWNER_NAME:+--owner-name "$OWNER_NAME"} \
-        ${BIND_ADDRESS:+--bind "$BIND_ADDRESS"} \
-        ${TRANSPORT_TYPE:+--transport "$TRANSPORT_TYPE"} \
-        ${AUTH_MODE:+--auth-mode "$AUTH_MODE"}
-fi
+exec java $JVM_OPTS_BASE \
+    -jar HytaleServer.jar \
+    --assets Assets.zip \
+    --owner-uuid "$OWNER_UUID" \
+    "$@"

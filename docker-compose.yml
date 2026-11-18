@@ -56,7 +56,18 @@ services:
       - JVM_XX_OPTS=${JVM_XX_OPTS:-} # Additional JVM -XX: options
       - BIND_ADDRESS=${BIND_ADDRESS:-} # IP address to bind to (empty = all interfaces)
       - TRANSPORT_TYPE=${TRANSPORT_TYPE:-} # Transport type (e.g., 'quic')
-      - AUTH_MODE=${AUTH_MODE:-} # Authentication mode (e.g., 'online')
+      - AUTH_MODE=${AUTH_MODE:-} # authenticated (default), offline or insecure
+
+      # Server Options (docs/env-variables.md#server-options)
+      - BOOT_COMMANDS=${BOOT_COMMANDS:-} # Console commands to run at every start, separated by ;
+      - SERVER_LOG=${SERVER_LOG:-} # Server log levels, e.g. INFO or WARNING,SomeLogger:FINE
+      - DISABLE_SENTRY=${DISABLE_SENTRY:-false} # true: do not send crash reports to Hytale
+      - IGNORE_BROKEN_MODS=${IGNORE_BROKEN_MODS:-false} # true: start even when a mod fails to load
+      - UNIVERSE_DIR=${UNIVERSE_DIR:-} # Worlds folder; empty: /data/universe
+      - EXTRA_MODS_DIRS=${EXTRA_MODS_DIRS:-} # More mod folders, separated by ;
+      - VERIFY_WORLDS=${VERIFY_WORLDS:-false} # true: check every world before the server starts
+      - RECOVERY_MODE=${RECOVERY_MODE:-} # With VERIFY_WORLDS: REGENERATE or FROM_BACKUP_OR_REGENERATE
+      - SERVER_ARGS=${SERVER_ARGS:-} # Any other server options, separated by spaces
 
       # Login & Health
       - AUTH_REFRESH_HOURS=${AUTH_REFRESH_HOURS:-24} # Refresh the Hytale login this often while running

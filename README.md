@@ -26,6 +26,7 @@ A Docker container for running Hytale game servers with automated authentication
 - **Built-in RCON support** for remote server management
 - **Automatic backups** with configurable retention
 - **Multi-platform images** (linux/amd64, linux/arm64)
+- **Server options as environment variables**: boot commands, server log levels, world check and repair, more mod folders, and `SERVER_ARGS` for any other option
 - **Extensive configuration** via environment variables
 
 ## Quick Start
@@ -151,8 +152,10 @@ hytale-docker/
 │   │   ├── 04-setup-rcon.sh
 │   │   ├── 05-install-mods.sh
 │   │   ├── 06-install-plugins.sh
+│   │   ├── 07-server-options.sh # Checks the server options; world check (VERIFY_WORLDS)
 │   │   ├── 09-start-server.sh
-│   │   └── _common.sh      # Shared helpers (logging, RCON password, versions)
+│   │   ├── _common.sh      # Shared helpers (logging, RCON password, versions)
+│   │   └── _server-options.sh # Table of server options set from env vars (add new ones here)
 │   ├── java/
 │   │   └── RconHash.java   # RCON password hasher, compiled at image build
 │   └── tools/              # Utility scripts

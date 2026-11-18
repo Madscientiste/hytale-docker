@@ -13,6 +13,8 @@ This document describes all environment variables that can be used to configure 
 - [Mods](#mods)
 - [Recommended Plugins](#recommended-plugins)
 - [JVM & Server Startup](#jvm--server-startup)
+- [Server Options](#server-options)
+- [World Check and Repair](#world-check-and-repair)
 - [Backup Configuration](#backup-configuration)
 - [RCON Configuration](#rcon-configuration)
 - [Authentication](#authentication)
@@ -220,7 +222,7 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 
 The image has a Docker health check (`hy-health.sh`), shown as `healthy` / `unhealthy` in `docker ps`:
 
-- **Starting** (login, configuration, plugins): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. The server download does not count: it is always healthy, and the clock starts again after it. A long startup usually means the container waits for a browser login; see the logs.
+- **Starting** (login, configuration, plugins): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. The server download and the [world check](#world-check-and-repair) do not count: they are always healthy, and the clock starts again after them. A long startup usually means the container waits for a browser login; see the logs.
 - **Running**: healthy while the server process runs and answers the `who` command over RCON within 10 seconds. No reply, or a reply starting with `Error:`, counts as unhealthy. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
 
 ### `HEALTH_STARTUP_MINUTES`
@@ -335,7 +337,7 @@ DEFAULT_GAME_MODE="Creative"
 
 ## Mods
 
-Hytale loads every `.jar` and `.zip` in `/data/mods` (on the host: `data/mods`). Copy mods there yourself, or list download links in `MODS`.
+Hytale loads every `.jar` and `.zip` in `/data/mods` (on the host: `data/mods`). Copy mods there yourself, or list download links in `MODS`. To load mods from more folders, see [`EXTRA_MODS_DIRS`](#extra_mods_dirs).
 
 ### `MODS`
 
@@ -474,13 +476,138 @@ TRANSPORT_TYPE="quic"
 
 ### `AUTH_MODE`
 
-**Type:** String  
-**Default:** Not set (uses server default)  
-**Description:** Authentication mode for the server.
+**Type:** String: `authenticated`, `offline` or `insecure`  
+**Default:** Not set (the server uses `authenticated`)  
+**Description:** Authentication mode for the server. Another value stops the container with an error.
 
 **Example:**
 ```bash
-AUTH_MODE="online"
+AUTH_MODE=offline
+```
+
+---
+
+## Server Options
+
+More options of the Hytale server. Each one is left out when empty, so the server's own default applies. A wrong value stops the container with an error that names the setting.
+
+### `BOOT_COMMANDS`
+
+**Type:** String (console commands, separated by `;` or new lines)  
+**Default:** empty  
+**Description:** Console commands the server runs at every start, in order, as if typed in the console.
+
+- Write commands without the leading `/`.
+- A command cannot contain a comma: the server splits its values on commas.
+
+**Example:**
+```bash
+BOOT_COMMANDS=say Server restarted; weather clear
+```
+
+---
+
+### `SERVER_LOG`
+
+**Type:** String  
+**Default:** empty (the server's levels)  
+**Description:** Log levels of the server itself (`--log`). `LOG_LEVEL` only covers this image's scripts.
+
+Give a level for all logs, or `Logger:LEVEL` items, separated by commas and without spaces. Levels: `SEVERE`, `WARNING`, `INFO`, `CONFIG`, `FINE`, `FINER`, `FINEST`, `ALL`, `OFF`.
+
+**Example:**
+```bash
+SERVER_LOG=WARNING
+```
+
+---
+
+### `DISABLE_SENTRY`
+
+**Type:** Boolean  
+**Default:** `false`  
+**Description:** `true` stops the server from sending crash reports to Hytale (Sentry).
+
+---
+
+### `IGNORE_BROKEN_MODS`
+
+**Type:** Boolean  
+**Default:** `false`  
+**Description:** `true` lets the server start even when a mod fails to load. That mod is then missing, so check the logs.
+
+---
+
+### `UNIVERSE_DIR`
+
+**Type:** String (absolute path inside the container)  
+**Default:** empty (`/data/universe`)  
+**Description:** The folder that holds the worlds and player data. It is created when missing. Keep it on a volume, or the worlds are lost with the container.
+
+**Example:**
+```bash
+UNIVERSE_DIR=/worlds
+```
+
+---
+
+### `EXTRA_MODS_DIRS`
+
+**Type:** String (absolute paths inside the container, separated by `;`)  
+**Default:** empty  
+**Description:** More folders the server loads mods from, besides `/data/mods`. Missing folders are created. `MODS` downloads still go to `/data/mods`.
+
+**Example:**
+```bash
+EXTRA_MODS_DIRS=/mods/shared;/mods/testing
+```
+
+---
+
+### `SERVER_ARGS`
+
+**Type:** String (server options, separated by spaces)  
+**Default:** empty  
+**Description:** Any other server option, added at the end of the command line. Run `docker compose exec hytale java -jar /data/HytaleServer.jar --help` to list them.
+
+- Values are split on spaces, so a value cannot contain one. Use a setting above when there is one.
+- Do not put login tokens here: every user on the host can read the command line. The image already passes them safely.
+- It is not checked, and it is not used for the world check below.
+
+**Example:**
+```bash
+SERVER_ARGS=--disable-file-watcher
+```
+
+---
+
+## World Check and Repair
+
+The server can check every world, and repair broken chunks. The image runs this check before the server starts; the server then starts as usual. If the check fails, the server is not started and the container stops.
+
+The check runs at every start (also on `hy-restart`), and a large world makes startup slower. Turn it on, start once, then turn it off. While it runs, the health check reports `healthy`.
+
+### `VERIFY_WORLDS`
+
+**Type:** Boolean  
+**Default:** `false`  
+**Description:** `true` checks every world before the server starts.
+
+### `RECOVERY_MODE`
+
+**Type:** String: `REGENERATE` or `FROM_BACKUP_OR_REGENERATE`  
+**Default:** empty (check only, no repair)  
+**Description:** What the check does with a broken chunk. It only works with `VERIFY_WORLDS=true`.
+
+- `REGENERATE`: makes the chunk again from the world generator. What players built there is lost.
+- `FROM_BACKUP_OR_REGENERATE`: takes the chunk from the newest backup in `BACKUP_DIR` that has it, else makes it again. The server may answer that its world storage cannot do this; then restore a backup instead.
+
+Make a copy of `data/universe` first: a repair changes the world.
+
+**Example (one start, then remove both lines):**
+```bash
+VERIFY_WORLDS=true
+RECOVERY_MODE=REGENERATE
 ```
 
 ---

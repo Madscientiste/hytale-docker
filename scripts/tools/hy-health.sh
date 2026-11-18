@@ -5,8 +5,8 @@
 # unhealthy  the server is not running, does not answer, or startup has taken
 #            longer than HEALTH_STARTUP_MINUTES (for example, waiting for a login)
 #
-# Startup (login, download, configuration) and the first minutes after the
-# server starts count as healthy, so updates do not raise false alarms.
+# Startup (login, download, configuration, world check) and the first minutes
+# after the server starts count as healthy, so updates do not raise false alarms.
 #
 # Repository: https://github.com/Madscientiste/hytale-docker
 
@@ -22,6 +22,11 @@ age=$(( $(date +%s) - ${since:-0} ))
 case "$state" in
     downloading)
         echo "checking or downloading server files for ${age}s"
+        exit 0
+        ;;
+    verifying)
+        # VERIFY_WORLDS=true: a large world can take long; not counted
+        echo "checking worlds for ${age}s"
         exit 0
         ;;
     starting)
