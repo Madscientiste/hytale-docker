@@ -139,7 +139,7 @@ svg { width: 100%; min-width: 680px; height: auto; display: block; font-family: 
       <span><i style="background:var(--c-run)"></i>running: healthy when the server answers over RCON</span>
     </div>
   </div>
-  <p><b>New: step 5b.</b> It checks the server options. With VERIFY_WORLDS=true it also checks the worlds, and repairs them with RECOVERY_MODE.</p>
+  <p><b>Step 5b.</b> It checks the server options. With VERIFY_WORLDS=true it also checks the worlds, and repairs them with RECOVERY_MODE.</p>
   <p><b>On error.</b> A wrong setting, a failed mod download or a failed world check stops the container. The server is not started.</p>
   <p><b>hy-restart.</b> All steps run again, so updates and changed mods are picked up. hy-scheduler runs in the background: it refreshes the login, and with RESTART_MODE it runs hy-restart.</p>
   <p><b>docker stop.</b> A running server saves the world first. During steps 1 to 5 the container stops at once. During the world check it waits for a clean stop.</p>
@@ -154,20 +154,15 @@ const S = 'var(--c-start)', D = 'var(--c-dl)', V = 'var(--c-verify)', R = 'var(-
 const steps = [
   ['1', 'Login', S], ['2', 'Download or update', D], ['3', 'Write config.json', S],
   ['4', 'RCON setup', S], ['4b', 'Download mods', S], ['4c', 'Recommended plugins', S],
-  ['5', 'Load login tokens', S], ['5b', 'Check options, worlds', V, true], ['6', 'Start server', R],
+  ['5', 'Load login tokens', S], ['5b', 'Check options, worlds', V], ['6', 'Start server', R],
 ];
 const g = document.getElementById('steps');
-steps.forEach(([n, title, color, isNew], i) => {
+steps.forEach(([n, title, color], i) => {
   const y = 222 + i * 70;
-  g.append(el('rect', { x: 60, y, width: 320, height: 44, rx: 12, class: 'node',
-    style: isNew ? 'stroke:var(--c-verify);stroke-width:2' : '' }));
+  g.append(el('rect', { x: 60, y, width: 320, height: 44, rx: 12, class: 'node' }));
   g.append(el('circle', { cx: 86, cy: y + 22, r: 14, fill: color }));
   g.append(el('text', { x: 86, y: y + 26.5, 'text-anchor': 'middle', class: 'num' }, n));
   g.append(el('text', { x: 112, y: y + 27, class: 'title' }, title));
-  if (isNew) {
-    g.append(el('rect', { x: 318, y: y + 12, width: 48, height: 20, rx: 10, fill: 'var(--c-verify)' }));
-    g.append(el('text', { x: 342, y: y + 26.5, 'text-anchor': 'middle', class: 'num' }, 'NEW'));
-  }
   if (i < steps.length - 1) g.append(el('path', { class: 'edge', d: `M220,${y + 44} V${y + 68}`, 'marker-end': 'url(#a)' }));
 });
 // Notes beside steps 4, 4b, 4c: [step index, lines]; the last line is muted
