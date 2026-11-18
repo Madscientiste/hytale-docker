@@ -63,6 +63,8 @@ COPY scripts/tools/* /usr/local/bin/
 RUN chmod +x /init-container/* && \
     chmod +x /usr/local/bin/* && \
     ln -sf /usr/local/bin/gen-psswd.sh /usr/local/bin/gen-psswd && \
+    ln -sf /usr/local/bin/hy-auth.sh /usr/local/bin/hy-auth && \
+    ln -sf /usr/local/bin/hy-downloader.sh /usr/local/bin/hy-downloader && \
     ln -sf /usr/local/bin/hy-restart.sh /usr/local/bin/hy-restart && \
     ln -sf /usr/local/bin/rcon-cli.sh /usr/local/bin/rcon-cli
 
