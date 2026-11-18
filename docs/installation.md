@@ -70,6 +70,7 @@ Images are automatically built and published to GitHub Container Registry:
 ```bash
 docker pull ghcr.io/madscientiste/hytale-docker:latest
 docker run -it --rm \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
   -v $(pwd)/data:/data \
   -p 5520:5520/udp \
   ghcr.io/madscientiste/hytale-docker:latest
@@ -85,6 +86,7 @@ docker run -it --rm \
 2. **Run the server:**
    ```bash
    docker run -it --rm \
+     -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
      -v $(pwd)/data:/data \
      -p 5520:5520/udp \
      hytale-server
@@ -117,7 +119,5 @@ GitHub Actions automatically builds and publishes Docker images to GitHub Contai
 - Tagged releases (e.g., `v1.0.0`)
 - Manual workflow dispatch
 
-Images are built for `linux/amd64` platforms.
-
-`linux/arm64` hasn't been tested, but should be supported, please report any issues if you encounter any.
+Images are built for `linux/amd64` and `linux/arm64`.
 
