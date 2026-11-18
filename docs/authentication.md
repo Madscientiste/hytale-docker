@@ -28,10 +28,10 @@ When starting the container for the first time, you'll see output similar to thi
 
 ```bash
 Attaching to hytale
-hytale  | [INFO] Modifying hytale user to match host UID=1000 GID=1001
-hytale  | [INFO] Creating hytale group with GID 1001
+hytale  | [INFO] Modifying hytale user to match host UID=1000 GID=1000
+hytale  | [INFO] Creating hytale group with GID 1000
 hytale  | [INFO] Creating hytale user with UID 1000
-hytale  | [INFO] Fixing ownership of /data to 1000:1001
+hytale  | [INFO] Fixing ownership of /data to 1000:1000
 hytale  | 
 hytale  | ==========================================
 hytale  |   Hytale Server Startup

@@ -68,7 +68,7 @@ If you set both `RCON_PASSWORD` and `RCON_PASSWORD_HASH`, they must match. Other
 By default (`RCON_VERSION` empty) the image installs the plugin release it was tested with, and checks its sha256 checksum. A download that does not match is refused, and an installed jar that does not match is moved to `data/.disabled-plugins` and downloaded again.
 
 - `RCON_VERSION=latest`: the newest release on GitHub, not checked.
-- `RCON_VERSION=rcon-v1.1.0` (a release tag, or just `1.1.0`): that release, 1.1.0 or newer. A value that starts with a digit or `v` becomes `rcon-v<version>`, so 1.0.0 (tag `v1.0.0`) cannot be chosen. Only the tested release (`rcon-v1.2.0`) is checked.
+- `RCON_VERSION=rcon-v1.1.0` (a release tag, or just `1.1.0`): that release, 1.1.0 or newer. A value that starts with a digit, or `v` and a digit, becomes `rcon-v<version>`, so 1.0.0 (tag `v1.0.0`) cannot be chosen. Only the tested release (`rcon-v1.2.0`) is checked.
 
 Only one RCON plugin version is kept in `data/mods`; other versions are moved to `data/.disabled-plugins`. If GitHub cannot be reached with `RCON_VERSION=latest`, the installed version is kept.
 

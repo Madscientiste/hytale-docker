@@ -205,7 +205,7 @@ OPTIONAL OPTIONS:
         Default: LATEST (downloads the latest available version).
 
     --patchline PATCHLINE
-        Specify the patchline to use (e.g., release, beta).
+        Specify the patchline to use (e.g., release, pre-release).
         Default: release
 
     -f, --force

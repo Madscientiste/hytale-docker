@@ -109,7 +109,7 @@ Also add `stop_grace_period: 60s` so the world is saved when the container stops
 What else changes when you update:
 
 - **Four recommended plugins are installed** (web server, Query, metrics, PerformanceSaver). PerformanceSaver lowers the tick rate and view radius when the server is under load. Turn any of them off with `ENABLE_WEBSERVER=false`, `ENABLE_QUERY=false`, `ENABLE_METRICS=false` or `ENABLE_PERFORMANCE_SAVER=false`. See [Recommended plugins](docs/env-variables.md#recommended-plugins).
-- **The default group is now 1000, not 1001** (`HOST_GID=${GID:-1000}`). At every start the container gives all files in `data/` to that user and group. If your host group is 1001 and you never set `GID`, set `GID=1001` in `.env`, or run `export GID=$(id -g)` before `docker compose up -d`.
+- **The compose file's default group is now 1000, not 1001** (`HOST_GID=${GID:-1000}`). At every start the container gives all files in `data/` to that user and group. If your host group is 1001 and you never set `GID`, set `GID=1001` in `.env`, or run `export GID=$(id -g)` before `docker compose up -d`.
 - **An empty `RCON_PASSWORD` now means a random password**, not "no password".
 - **The image has a health check**, shown as `healthy` or `unhealthy` in `docker ps`.
 - **A pinned `VERSION` now warns when another version is installed.** As before, it is not downloaded over an installed server: start once with `FORCE_DOWNLOAD=true` to switch versions.

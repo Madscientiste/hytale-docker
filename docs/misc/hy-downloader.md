@@ -247,7 +247,7 @@ hy-downloader -a ./auth.json -o ./server --simple-names -q
 
 ## Implementation Notes
 
-- POSIX shell compatible (`#!/bin/sh`)
+- Runs with the image's busybox `sh` (`#!/bin/sh`)
 - Uses embedded logging functions (same as `hy-auth`)
 - Supports both `jq` and basic shell JSON parsing (falls back to `python3` or `grep`/`sed`)
 - Handles signed URLs with proper URL encoding (`\u0026` → `&`)

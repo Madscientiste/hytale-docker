@@ -42,7 +42,7 @@ environment:
   - HOST_GID=${GID:-1000}
 ```
 
-`docker compose` reads `UID` and `GID` from your shell or from `.env`. Bash and zsh set `UID`, but they do not export it, so `docker compose` does not see it. Nothing sets `GID`. The simplest way is to put both in `.env`, with the numbers that `id -u` and `id -g` print:
+`docker compose` reads `UID` and `GID` from your shell or from `.env`. Bash and zsh set `UID`, but they do not export it, so `docker compose` does not see it. Bash does not set `GID`; zsh sets it but does not export it. The simplest way is to put both in `.env`, with the numbers that `id -u` and `id -g` print:
 
 ```bash
 # .env
@@ -108,7 +108,7 @@ LOG_LEVEL=DEBUG
 **Description:** Hytale server version to download. The server only updates when it restarts, and only when `VERSION=LATEST`.
 
 - `LATEST`: on start, checks for a new version and downloads it. The check runs at most once an hour (see [`FORCE_UPDATE_CHECK`](#force_update_check)).
-- Any other value pins the server to that version. Nothing is checked or downloaded. An installed server of another version keeps running (the log warns); start once with `FORCE_DOWNLOAD=true` to install the pinned one.
+- Any other value pins the server to that version. Once a server is installed, nothing is checked or downloaded. An installed server of another version keeps running (the log warns); start once with `FORCE_DOWNLOAD=true` to install the pinned one.
 
 **Valid Values:**
 - `LATEST` - Downloads the latest version from the manifest (default)
@@ -256,7 +256,7 @@ These variables configure the Hytale server's `config.json` file. All settings a
 
 The `docker-compose.yml` of this repository always sets `SERVER_NAME`, `MOTD`, `MAX_PLAYERS`, `MAX_VIEW_RADIUS`, `DEFAULT_WORLD` and `DEFAULT_GAME_MODE`. So if you edit those keys in `config.json` by hand, the next start overwrites them. Change the variables instead.
 
-Each default below shows two values: the `docker-compose.yml` default, and the image default when the variable is unset (the value in a new `config.json`).
+Where the two differ, the default shows both: the `docker-compose.yml` default, and the image default when the variable is unset (the value in a new `config.json`).
 
 ### `SERVER_NAME`
 
@@ -746,7 +746,7 @@ RCON_ENABLED=true
 
 - empty (default): the release this image was tested with. Its sha256 checksum is checked; a file that does not match is refused.
 - `latest`: the newest release on GitHub, not checked. If GitHub cannot be reached, the installed version is kept.
-- A release tag such as `rcon-v1.1.0`, or just `1.1.0`: that release, 1.1.0 or newer. A value that starts with a digit or `v` becomes `rcon-v<version>`, so 1.0.0 (tag `v1.0.0`) cannot be chosen. Only the tested release (`rcon-v1.2.0`) is checked.
+- A release tag such as `rcon-v1.1.0`, or just `1.1.0`: that release, 1.1.0 or newer. A value that starts with a digit, or `v` and a digit, becomes `rcon-v<version>`, so 1.0.0 (tag `v1.0.0`) cannot be chosen. Only the tested release (`rcon-v1.2.0`) is checked.
 
 Other versions found in `/data/mods` are moved to `/data/.disabled-plugins`, so only one RCON plugin loads.
 
