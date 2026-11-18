@@ -9,14 +9,17 @@
 #   docker exec hytale hy-restart              # warn players, restart in RESTART_WARN_MINUTES
 #   docker exec hytale hy-restart --now        # restart immediately
 #   docker exec hytale hy-restart --minutes 10 # warn players, restart in 10 minutes
+#   docker exec hytale hy-restart --reason "new mods" # add the reason to each warning
 #   docker exec hytale hy-restart --cancel     # cancel a pending restart
+#
+# Without --reason, the reason comes from RESTART_REASON (if set).
 #
 # Repository: https://github.com/Madscientiste/hytale-docker
 
 . /init-container/_common.sh
 
 show_help() {
-    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 MINUTES="${RESTART_WARN_MINUTES:-5}"
