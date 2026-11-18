@@ -213,18 +213,18 @@ EXAMPLES:
     hy-auth -h
 
     # Verbose output
-    hy-auth --verbose
+    hy-auth --verbose -o /path/to/auth.json
 
     # Quiet mode
-    hy-auth --quiet
+    hy-auth --quiet -o /path/to/auth.json
 
     # Refresh tokens
-    hy-auth --refresh
     hy-auth --refresh /path/to/auth.json
+    hy-auth --refresh -o /path/to/auth.json
 
     # Combined options
     hy-auth -v -o /custom/path/auth.json
-    hy-auth --quiet --refresh
+    hy-auth --quiet --refresh /path/to/auth.json
 
 EXIT CODES:
     0   Success
