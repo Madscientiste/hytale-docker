@@ -49,7 +49,7 @@ hy-downloader [OPTIONS] --auth-file PATH --output-dir PATH
   - If version doesn't exist, returns 404 error with helpful message
 
 - `--patchline PATCHLINE`
-  - Specify the patchline to use (e.g., `release`, `beta`)
+  - Specify the patchline to use (e.g., `release`, `pre-release`)
   - Default: `release`
   - Used when fetching version manifest or constructing download paths
 
@@ -198,8 +198,8 @@ hy-downloader -a ./auth.json -o ./server
 # Download specific version
 hy-downloader -a ./auth.json -o ./server --server-version 2026.01.17-4b0f30090
 
-# Download from beta patchline
-hy-downloader -a ./auth.json -o ./server --patchline beta
+# Download from the pre-release patchline
+hy-downloader -a ./auth.json -o ./server --patchline pre-release
 ```
 
 ### File Naming
@@ -247,7 +247,7 @@ hy-downloader -a ./auth.json -o ./server --simple-names -q
 
 ## Implementation Notes
 
-- POSIX shell compatible (`#!/bin/bash`)
+- POSIX shell compatible (`#!/bin/sh`)
 - Uses embedded logging functions (same as `hy-auth`)
 - Supports both `jq` and basic shell JSON parsing (falls back to `python3` or `grep`/`sed`)
 - Handles signed URLs with proper URL encoding (`\u0026` → `&`)
@@ -300,7 +300,8 @@ hy-downloader -a ./auth.json -o ./server --simple-names -q
 The downloaded ZIP file contains:
 - `HytaleServer.jar` (at root or in `Server/` subdirectory)
 - `Assets.zip` (at root or in `Server/` subdirectory)
-- Other files (ignored, only JAR and ZIP are extracted)
+- `HytaleServer.aot` (optional, next to the jar): an AOT cache. It is kept as `HytaleServer.aot` (with `--simple-names`) or `hs-VERSION.aot`. When a download has none, an old file of that name is removed
+- Other files (ignored)
 
 ## Final Notes
 
