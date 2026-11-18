@@ -20,21 +20,22 @@ environment:
   - MAX_MEMORY=8G
 ```
 
-**Why set them equal?** Prevents heap resizing during operation which can cause lag spikes.
+**Equal or not?** Equal values stop the heap from resizing while the server runs, which can prevent lag spikes. The table uses equal values. The `docker-compose.yml` defaults are `INIT_MEMORY=8G` and `MAX_MEMORY=16G`: the heap starts at 8G and can grow to 16G.
 
 ## Advanced Tuning
 
 ### Custom JVM Flags
 
-If you need custom JVM flags, use `JVM_OPTS` for general options or `JVM_XX_OPTS` for `-XX:` options:
+Put custom JVM flags in `JVM_OPTS`. They come after the image's own options, and Java uses the last value of an option, so `JVM_OPTS` can also change a default:
 
 ```yaml
 environment:
-  - JVM_OPTS=-Dcustom.property=value
-  - JVM_XX_OPTS=-XX:MaxGCPauseMillis=100
+  - JVM_OPTS=-XX:MaxGCPauseMillis=100 -Dcustom.property=value
 ```
 
-**Note:** `JVM_XX_OPTS` are prepended to the base options, while `JVM_OPTS` are appended. This allows you to override defaults when needed.
+`JVM_XX_OPTS` comes before the image's options, so it cannot change a default: the image's value comes later and wins. Use it only for `-XX:` options the image does not set.
+
+The image is tuned for the G1 garbage collector (`-XX:+UseG1GC`). Adding another collector, such as `-XX:+UseZGC`, stops Java with "Multiple garbage collectors selected".
 
 ### Pre-configured Optimizations
 
@@ -63,12 +64,9 @@ The cache only works with the exact jar and Java version it was built for. If th
 
 ### Monitoring
 
-Check JVM performance from your host:
+Check performance from your host:
 
 ```bash
-# GC statistics (every second, 10 samples)
-docker compose exec hytale jstat -gc 1 1000 10
-
 # Container resource usage (CPU, memory, network)
 docker stats hytale
 
@@ -76,7 +74,14 @@ docker stats hytale
 docker compose exec hytale ps aux | grep java
 ```
 
-**Note:** The `jstat` command requires the Java process PID. Use `ps aux | grep java` inside the container to find it, or monitor the main process (PID 1).
+The image has a Java runtime only, so JDK tools such as `jstat` are not in it. To see garbage collection pauses, write a GC log with `JVM_OPTS`:
+
+```yaml
+environment:
+  - JVM_OPTS=-Xlog:gc*:file=/data/gc.log:time,uptime:filecount=5,filesize=10m
+```
+
+The log is `data/gc.log` on the host. Each pause line shows how long the pause took.
 
 ## Performance Tips
 
@@ -84,7 +89,7 @@ docker compose exec hytale ps aux | grep java
 2. **Don't over-allocate** - Leave headroom for the OS (at least 2GB recommended)
 3. **SSD storage** - Significantly improves world loading and chunk generation
 4. **Network** - Ensure stable connection for multiplayer; consider QoS settings
-5. **Monitor GC pauses** - Use `jstat` to verify GC pause times stay under 200ms
+5. **Monitor GC pauses** - Use a GC log (see [Monitoring](#monitoring)) to verify GC pause times stay under 200ms
 6. **View radius** - Lower `MAX_VIEW_RADIUS` reduces memory usage and improves performance
 
 ## Troubleshooting
@@ -99,9 +104,9 @@ If the server uses all allocated memory:
 ### GC Pauses Causing Lag
 
 If experiencing lag spikes:
-- Verify GC pause times with `jstat`
+- Verify GC pause times with a GC log (see [Monitoring](#monitoring))
 - Consider increasing `MAX_MEMORY` to reduce GC frequency
-- Adjust `-XX:MaxGCPauseMillis` via `JVM_XX_OPTS` if needed (default: 200ms)
+- Adjust `-XX:MaxGCPauseMillis` via `JVM_OPTS` if needed (default: 200ms)
 
 ### Container Resource Limits
 
