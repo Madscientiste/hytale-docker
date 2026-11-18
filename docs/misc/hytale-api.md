@@ -246,6 +246,11 @@ Authorization: Bearer <access_token>
 4. Download from signed URL
 5. Verify SHA256 checksum
 
+**What the zip holds**:
+
+- `HytaleServer.jar` and `Assets.zip`, at the top or in a `Server/` folder.
+- Sometimes `HytaleServer.aot` next to the jar: an AOT cache (JEP 514) that makes the server start faster. It only works with the jar it came with. Not every release has one. The image starts the server with `-XX:AOTCache=HytaleServer.aot` when it is there.
+
 ## Token Information
 
 ### Access Token
@@ -286,7 +291,10 @@ The access token is a JWT (JSON Web Token) with the following structure:
 
 Refresh tokens use Ory Hydra format: `ory_rt_...`
 
-They can be used to obtain new access tokens without re-authentication.
+They get new access tokens without logging in again. Two rules:
+
+- **Each use replaces it.** The token response holds a new refresh token, and the old one stops working. Save the new one every time. Two refreshes at once break each other, so the scripts refresh under a lock (`with_auth_lock` in `scripts/steps/_common.sh`).
+- **It lasts 30 days.** Used before then, the new one lasts another 30 days. `hy-scheduler` refreshes the login once a day by default (`AUTH_REFRESH_HOURS`), so a running server never needs a new browser login. See [Authentication](../authentication.md).
 
 ### Session Tokens
 
@@ -384,6 +392,6 @@ sha256sum game.zip  # Verify against manifest sha256
 
 ## See Also
 
-- `scripts/tools/hy-auth.sh` - Implementation of OAuth2 device code flow
-- `playground/` - Test scripts and examples (see project root for details)
+- `scripts/tools/hy-auth.sh` - Implementation of OAuth2 device code flow, token refresh, profiles and game sessions ([hy-auth CLI](hy-auth.md))
+- `scripts/tools/hy-downloader.sh` - Implementation of the download flow above ([hy-downloader CLI](hy-downloader.md))
 
