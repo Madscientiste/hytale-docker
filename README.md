@@ -122,7 +122,7 @@ What the container does from `docker start` to a running server, and how it rest
 
 ![Container lifecycle: startup steps, restart loop and the ways the container stops](docs/images/lifecycle.png)
 
-The source is [docs/lifecycle.html](docs/lifecycle.html). After changing it, export the image again (see the comment at its top).
+The source is [docs/lifecycle.html](docs/lifecycle.html).
 
 ## Documentation
 
