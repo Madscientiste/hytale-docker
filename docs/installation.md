@@ -18,7 +18,7 @@ services:
     environment:
       # Container & Permissions
       - HOST_UID=${UID:-1000}
-      - HOST_GID=${GID:-1001}
+      - HOST_GID=${GID:-1000}
       
       # Logging
       - LOG_LEVEL=INFO

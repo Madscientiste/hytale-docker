@@ -39,14 +39,22 @@ These variables control the container user/group permissions to match your host 
 ```yaml
 environment:
   - HOST_UID=${UID:-1000}
-  - HOST_GID=${GID:-1001}  # Note: 1001 is just an example - use your actual host GID
+  - HOST_GID=${GID:-1000}
+```
+
+`docker compose` reads `UID` and `GID` from your shell or from `.env`. Bash and zsh set `UID`, but they do not export it, so `docker compose` does not see it. Nothing sets `GID`. The simplest way is to put both in `.env`, with the numbers that `id -u` and `id -g` print:
+
+```bash
+# .env
+UID=1000
+GID=1000
 ```
 
 **Example (command line):**
 ```bash
-export UID=$(id -u)
+export UID          # bash refuses "export UID=$(id -u)": UID is read-only there
 export GID=$(id -g)
-docker compose up
+docker compose up -d
 ```
 
 **Example (direct):**
@@ -54,7 +62,7 @@ docker compose up
 docker run -e HOST_UID=1000 -e HOST_GID=1000 ...
 ```
 
-**Note:** The container runs as root initially to modify the user/group at runtime, then drops privileges to the `hytale` user before starting the server.
+**Note:** The container runs as root initially to modify the user/group at runtime, then drops privileges to the `hytale` user before starting the server. When both are set, it also gives everything in `/data` to `HOST_UID:HOST_GID` at every start.
 
 ### `MACHINE_ID`
 
@@ -900,7 +908,7 @@ services:
     build: .
     environment:
       - HOST_UID=${UID:-1000}
-      - HOST_GID=${GID:-1001}
+      - HOST_GID=${GID:-1000}
       - SERVER_NAME=My Server
       - MAX_PLAYERS=50
       - INIT_MEMORY=8G
@@ -916,9 +924,9 @@ services:
 Create a `.env` file in your project root:
 
 ```bash
-# Container permissions
+# Container permissions (the numbers id -u and id -g print)
 UID=1000
-GID=1001
+GID=1000
 
 # Server configuration
 SERVER_NAME=My Awesome Server
@@ -944,15 +952,15 @@ Then reference in docker-compose.yml:
 ```yaml
 environment:
   - HOST_UID=${UID:-1000}
-  - HOST_GID=${GID:-1001}
-  - SERVER_NAME=${SERVER_NAME:-Hytale Server}
-  - MAX_PLAYERS=${MAX_PLAYERS:-100}
+  - HOST_GID=${GID:-1000}
+  - SERVER_NAME=${SERVER_NAME:-My Hytale Server}
+  - MAX_PLAYERS=${MAX_PLAYERS:-50}
 ```
 
 ### Command line
 
 ```bash
-docker run -e HOST_UID=1000 -e HOST_GID=1001 \
+docker run -e HOST_UID=1000 -e HOST_GID=1000 \
   -e SERVER_NAME="My Server" \
   -e MAX_PLAYERS=50 \
   -e INIT_MEMORY=8G -e MAX_MEMORY=16G \
@@ -960,6 +968,7 @@ docker run -e HOST_UID=1000 -e HOST_GID=1001 \
   -e BACKUP_FREQUENCY=60 \
   -v ./data:/data \
   -v ./backups:/backup \
+  -p 5520:5520/udp \
   hytale-server
 ```
 
