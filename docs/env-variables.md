@@ -600,7 +600,7 @@ The check runs at every start (also on `hy-restart`), and a large world makes st
 **Description:** What the check does with a broken chunk. It only works with `VERIFY_WORLDS=true`.
 
 - `REGENERATE`: makes the chunk again from the world generator. What players built there is lost.
-- `FROM_BACKUP_OR_REGENERATE`: takes the chunk from the newest backup in `BACKUP_DIR` that has it, else makes it again. The server may answer that its world storage cannot do this; then restore a backup instead.
+- `FROM_BACKUP_OR_REGENERATE`: takes the chunk from the newest backup in `BACKUP_DIR` that has it, else makes it again. It needs `ENABLE_BACKUPS=true`, so the server knows where the backups are. The server may answer that its world storage cannot do this; then restore a backup instead.
 
 Make a copy of `data/universe` first: a repair changes the world.
 

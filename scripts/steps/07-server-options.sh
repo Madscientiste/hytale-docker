@@ -64,12 +64,15 @@ fi
 echo "verifying $(date +%s)" > "$HYTALE_STATE_FILE"
 
 # Run the check in the background and pass a stop on to it: it may be
-# writing chunks, so it must shut down cleanly (the entrypoint waits for it)
+# writing chunks, so it must shut down cleanly (the entrypoint waits for it).
+# The trap is set first, so a stop that comes before java starts is not lost.
+VERIFY_PID=""
+STOPPED=false
+trap 'STOPPED=true; [ -n "$VERIFY_PID" ] && kill -TERM "$VERIFY_PID" 2>/dev/null' TERM INT
 java $(server_jvm_options) -jar HytaleServer.jar --assets Assets.zip "$@" \
     --verify-worlds ${RECOVERY_MODE:+--recovery-mode "$RECOVERY_MODE"} &
 VERIFY_PID=$!
-STOPPED=false
-trap 'STOPPED=true; kill -TERM "$VERIFY_PID" 2>/dev/null' TERM INT
+[ "$STOPPED" = true ] && kill -TERM "$VERIFY_PID" 2>/dev/null
 while :; do
     wait "$VERIFY_PID"
     rc=$?

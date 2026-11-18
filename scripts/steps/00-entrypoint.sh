@@ -36,7 +36,8 @@ stop_container() {
         if [ -n "$STEP_PID" ] && [ "$(cut -d' ' -f1 "$HYTALE_STATE_FILE" 2>/dev/null)" = "verifying" ]; then
             log_info "Stop requested during the world check, waiting for it to stop"
             while kill -0 "$STEP_PID" 2>/dev/null; do
-                wait "$STEP_PID" 2>/dev/null
+                # set -e is on: a non-zero wait must not end the loop early
+                wait "$STEP_PID" 2>/dev/null || true
             done
         fi
         log_info "Stop requested during startup, stopping"
