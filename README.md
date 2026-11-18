@@ -116,6 +116,14 @@ What else changes when you update:
 - **RCON numbers are checked.** A value outside the plugin's range (for example `RCON_READ_TIMEOUT_MS` above 300000) stops the container with an error, instead of RCON silently staying off. With an `RCON_VERSION` older than 1.2.0, only whole numbers are checked.
 - **Still on a January 2026 server build?** The RCON plugin this image installs (1.2.0) was built for January 2026 builds and for 0.7.7. It was only tested on 0.7.7. If `rcon-cli` stops working, set `RCON_VERSION=rcon-v1.1.0`.
 
+## How It Works
+
+What the container does from `docker start` to a running server, and how it restarts and stops:
+
+![Container lifecycle: startup steps, restart loop and the ways the container stops](docs/images/lifecycle.png)
+
+The source is [docs/lifecycle.html](docs/lifecycle.html). After changing it, export the image again (see the comment at its top).
+
 ## Documentation
 
 ### Getting Started

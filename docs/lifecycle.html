@@ -4,7 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Container lifecycle</title>
-<!-- How the container starts, restarts and stops. Open this file in a browser. -->
+<!-- How the container starts, restarts and stops. Open this file in a browser.
+     After a change, export docs/images/lifecycle.png again (Chromium, ImageMagick):
+       chromium --headless --hide-scrollbars --force-device-scale-factor=2 \
+         --window-size=776,1600 --virtual-time-budget=6000 \
+         --screenshot=/tmp/lifecycle.png "file://$PWD/docs/lifecycle.html"
+       magick /tmp/lifecycle.png -trim +repage -bordercolor white -border 40 -strip \
+         docs/images/lifecycle.png -->
+<!-- The image is the page at 2x; the HTML stays the source. -->
 <style>
 @import url('https://cdn.jsdelivr.net/npm/@fontsource/lato@5.2.7/400.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource/lato@5.2.7/700.css');
