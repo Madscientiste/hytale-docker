@@ -76,12 +76,25 @@ hytale  |
 hytale  | Step 2: Checking server files
 hytale  | 
 hytale  | ==========================================
+hytale  |   Hytale Server Download
+hytale  | ==========================================
+hytale  | 
+hytale  | [INFO] Configuration:
+hytale  | [INFO]   Version: LATEST
+hytale  | [INFO]   Patchline: release
+hytale  | [INFO]   Data directory: /data
+hytale  | [INFO] Mode: First initialization (no existing files)
+hytale  | [INFO] Downloading server files (initial setup)...
+hytale  | 
+hytale  | ==========================================
 hytale  |   Downloading Hytale Server
 hytale  | ==========================================
 hytale  | 
 hytale  | [INFO] Version: LATEST
 hytale  | [INFO] Patchline: release
-hytale  | [INFO] Using credentials: /data/auth.json
+hytale  | [INFO] Auth file: /data/auth.json
+hytale  | [INFO] Output directory: /data
+hytale  | [INFO] Using simple file names (HytaleServer.jar, Assets.zip)
 hytale  | Step 1: Getting version manifest for patchline: release
 hytale  | [SUCCESS] Got signed manifest URL
 hytale  | Step 2: Fetching manifest content...
