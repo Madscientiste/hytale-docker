@@ -37,7 +37,7 @@ services:
       - MAX_PLAYERS=${MAX_PLAYERS:-50} # Maximum number of players
       - MAX_VIEW_RADIUS=${MAX_VIEW_RADIUS:-32} # Maximum view radius (chunks)
       - DEFAULT_WORLD=${DEFAULT_WORLD:-default} # Default world name
-      - DEFAULT_GAME_MODE=${DEFAULT_GAME_MODE:-Adventure} # Adventure or Creative
+      - DEFAULT_GAME_MODE=${DEFAULT_GAME_MODE:-Adventure} # Adventure, Creative or Survival
       - SERVER_PASSWORD=${SERVER_PASSWORD:-} # Server password (empty for public)
 
       # Mods: download links (.jar/.zip), comma-separated; downloaded once into data/mods
