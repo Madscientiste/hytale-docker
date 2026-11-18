@@ -105,7 +105,10 @@ LOG_LEVEL=DEBUG
 
 **Type:** String  
 **Default:** `LATEST`  
-**Description:** Hytale server version to download. `LATEST` downloads the newest version and checks for updates on every start; any other value pins the server to that version and disables update checks.
+**Description:** Hytale server version to download. The server only updates when it restarts, and only when `VERSION=LATEST`.
+
+- `LATEST`: on start, checks for a new version and downloads it. The check runs at most once an hour (see [`FORCE_UPDATE_CHECK`](#force_update_check)).
+- Any other value pins the server to that version. Nothing is checked or downloaded. An installed server of another version keeps running (the log warns); start once with `FORCE_DOWNLOAD=true` to install the pinned one.
 
 **Valid Values:**
 - `LATEST` - Downloads the latest version from the manifest (default)
@@ -123,7 +126,7 @@ VERSION=LATEST
 VERSION=0.7.7
 ```
 
-**Error Handling:**
+**Error Handling:** when the version is downloaded (no server installed yet, or `FORCE_DOWNLOAD=true`):
 - If a partial version (date without hash) is specified, the container will exit with an error message
 - If a non-existent version is specified, the container will exit with a 404 error message
 
@@ -218,6 +221,12 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 **Default:** `60`  
 **Description:** How often `RESTART_MODE=on-update` checks for a new version.
 
+### `RESTART_REASON`
+
+**Type:** String  
+**Default:** empty  
+**Description:** A reason that `hy-restart` adds to each player warning when it is run without `--reason`. Set it for one call: `docker exec -e RESTART_REASON="new mods" hytale hy-restart`.
+
 ### `TZ`
 
 **Type:** String (time zone name, e.g. `Europe/Paris`)  
@@ -231,7 +240,7 @@ Off by default. See [Update Management](update-management.md#restarting-the-serv
 The image has a Docker health check (`hy-health.sh`), shown as `healthy` / `unhealthy` in `docker ps`:
 
 - **Starting** (login, configuration, plugins): healthy for up to `HEALTH_STARTUP_MINUTES`, then unhealthy. The server download and the [world check](#world-check-and-repair) do not count: they are always healthy, and the clock starts again after them. A long startup usually means the container waits for a browser login; see the logs.
-- **Running**: healthy while the server process runs and answers the `who` command over RCON within 10 seconds. No reply, or a reply starting with `Error:`, counts as unhealthy. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
+- **Running**: healthy while the server process runs and answers the `who` command over RCON within [`RCON_COMMAND_TIMEOUT`](#rcon_command_timeout) seconds (default `10`). No reply, or a reply starting with `Error:`, counts as unhealthy. Without RCON (or with only `RCON_PASSWORD_HASH`) only the process is checked. The first 5 minutes after the server starts always count as healthy.
 
 ### `HEALTH_STARTUP_MINUTES`
 
@@ -245,10 +254,14 @@ The image has a Docker health check (`hy-health.sh`), shown as `healthy` / `unhe
 
 These variables configure the Hytale server's `config.json` file. All settings are optional and will only be applied if the variable is set. The configuration step runs automatically during container startup (step 3 of the entrypoint).
 
+The `docker-compose.yml` of this repository always sets `SERVER_NAME`, `MOTD`, `MAX_PLAYERS`, `MAX_VIEW_RADIUS`, `DEFAULT_WORLD` and `DEFAULT_GAME_MODE`. So if you edit those keys in `config.json` by hand, the next start overwrites them. Change the variables instead.
+
+Each default below shows two values: the `docker-compose.yml` default, and the image default when the variable is unset (the value in a new `config.json`).
+
 ### `SERVER_NAME`
 
 **Type:** String  
-**Default:** `"Hytale Server"`  
+**Default:** `My Hytale Server` in `docker-compose.yml` (`Hytale Server` when unset)  
 **Description:** Name of the server displayed to players.
 
 **Example:**
@@ -261,7 +274,7 @@ SERVER_NAME="My Awesome Server"
 ### `MOTD`
 
 **Type:** String  
-**Default:** `""` (empty)  
+**Default:** `Welcome to our Hytale server!` in `docker-compose.yml` (empty when unset)  
 **Description:** Message of the Day displayed to players.
 
 **Example:**
@@ -289,7 +302,7 @@ SERVER_PASSWORD="mySecurePassword123"
 ### `MAX_PLAYERS`
 
 **Type:** Integer  
-**Default:** `100`  
+**Default:** `50` in `docker-compose.yml` (`100` when unset)  
 **Description:** Maximum number of players allowed on the server simultaneously.
 
 **Example:**
@@ -367,7 +380,7 @@ MODS=https://example.com/mods/cool-mod-1.2.0.jar,https://example.com/mods/other-
 
 ## Recommended Plugins
 
-Hytale's official server manual recommends four plugins. This image installs them by default. On every start it checks for the build that matches the installed server version in each plugin's GitHub releases, and downloads it into `/data/mods` when it is missing. Each download is checked against the sha256 checksum GitHub records for the file; a file that does not match is not installed.
+Hytale's official server manual recommends four plugins. This image installs them by default. On every start it checks for the build that matches the installed server version in each plugin's GitHub releases, and downloads it into `/data/mods` when it is missing. Each download is checked against the sha256 checksum GitHub records for the file; a file that does not match is not installed. When GitHub has no checksum for a file, it is installed without a check, and the log warns.
 
 | Setting | Plugin | What it does |
 |---|---|---|
@@ -401,7 +414,7 @@ ENABLE_PERFORMANCE_SAVER=false   # keep the full tick rate and view radius
 ### `INIT_MEMORY`
 
 **Type:** String (Memory size)  
-**Default:** `12G`  
+**Default:** `8G` in `docker-compose.yml` (`12G` when unset)  
 **Description:** Initial Java heap size (JVM `-Xms` option).
 
 **Format:** Use standard JVM memory format (e.g., `512M`, `2G`, `4096M`)
@@ -416,7 +429,7 @@ INIT_MEMORY=8G
 ### `MAX_MEMORY`
 
 **Type:** String (Memory size)  
-**Default:** `12G`  
+**Default:** `16G` in `docker-compose.yml` (`12G` when unset)  
 **Description:** Maximum Java heap size (JVM `-Xmx` option).
 
 **Format:** Use standard JVM memory format (e.g., `512M`, `2G`, `4096M`)
@@ -434,11 +447,11 @@ MAX_MEMORY=16G
 
 **Type:** String  
 **Default:** `""` (empty)  
-**Description:** Additional JVM options to append to the base JVM arguments.
+**Description:** Additional JVM options to append to the base JVM arguments. Java uses the last value of an option, so `JVM_OPTS` can also change a default of the image.
 
 **Example:**
 ```bash
-JVM_OPTS="-Dsome.property=value -XX:+SomeOption"
+JVM_OPTS="-Dsome.property=value -XX:MaxGCPauseMillis=100"
 ```
 
 ---
@@ -447,11 +460,11 @@ JVM_OPTS="-Dsome.property=value -XX:+SomeOption"
 
 **Type:** String  
 **Default:** `""` (empty)  
-**Description:** Additional JVM `-XX:` options to prepend to the base JVM arguments.
+**Description:** Additional JVM `-XX:` options to prepend to the base JVM arguments. The image's own options come later and win, so `JVM_XX_OPTS` cannot change a default: use `JVM_OPTS` for that. The garbage collector is G1 (`-XX:+UseG1GC`); adding another one, such as `-XX:+UseZGC`, stops Java with "Multiple garbage collectors selected".
 
 **Example:**
 ```bash
-JVM_XX_OPTS="-XX:+UseZGC -XX:MaxMetaspaceSize=512M"
+JVM_XX_OPTS="-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data"
 ```
 
 ---
@@ -712,7 +725,7 @@ These variables control the RCON (Remote Console) plugin, which provides remote 
 
 **Type:** Boolean  
 **Default:** `true`  
-**Description:** Enable or disable the RCON plugin. When disabled, the plugin will not be downloaded or configured.
+**Description:** Enable or disable the RCON plugin. When disabled, the plugin will not be downloaded or configured, and an installed RCON plugin is moved from `/data/mods` to `/data/.disabled-plugins`.
 
 **Valid Values:**
 - `true` - Enable RCON plugin (default)
@@ -733,7 +746,7 @@ RCON_ENABLED=true
 
 - empty (default): the release this image was tested with. Its sha256 checksum is checked; a file that does not match is refused.
 - `latest`: the newest release on GitHub, not checked. If GitHub cannot be reached, the installed version is kept.
-- A release tag such as `rcon-v1.1.0`, or just `1.1.0`: that release. Only the tested release (`rcon-v1.2.0`) is checked.
+- A release tag such as `rcon-v1.1.0`, or just `1.1.0`: that release, 1.1.0 or newer. A value that starts with a digit or `v` becomes `rcon-v<version>`, so 1.0.0 (tag `v1.0.0`) cannot be chosen. Only the tested release (`rcon-v1.2.0`) is checked.
 
 Other versions found in `/data/mods` are moved to `/data/.disabled-plugins`, so only one RCON plugin loads.
 
@@ -769,6 +782,8 @@ With `0.0.0.0`, plugin 1.2.0 logs a warning at every start ("RCON is listening o
 **Description:** Your RCON password. Empty: the image makes a random password once and saves it in `/data/.rcon-password` (mode 600). `rcon-cli` inside the container, the restart warnings and the health check use it by themselves.
 
 The image hashes the password from stdin, so it never appears on a command line. The old example value `verysecurepassword` logs a warning.
+
+`RCON_PASSWORD` may also be a hash from `gen-psswd`. The image then gives it to the plugin as it is, and it works like `RCON_PASSWORD_HASH` alone (same limits, see below).
 
 **Example:**
 ```bash
@@ -848,6 +863,14 @@ The ranges above are the RCON plugin's own. A number outside its range stops the
 
 ---
 
+### `RCON_COMMAND_TIMEOUT`
+
+**Type:** Integer (seconds)  
+**Default:** `10`  
+**Description:** How long the health check and the restart warnings wait for the server to answer an RCON command. Keep it below the health check's 15-second timeout. It is not in `docker-compose.yml`: add it to the `environment` list to use it.
+
+---
+
 ### `rcon-cli` inside the container
 
 `docker compose exec hytale rcon-cli <command>` connects to the server's RCON and uses `RCON_PASSWORD` or the generated password, with no flags. See [rcon.md](rcon.md).
@@ -856,7 +879,7 @@ The ranges above are the RCON plugin's own. A number outside its range stops the
 
 ## Authentication
 
-> **Note:** Authentication is handled automatically via `hy-auth.sh` during container startup. Credentials are stored in `/data/auth.json`. These environment variables are **not currently used** - authentication tokens are read from the JSON file, not environment variables.
+Authentication is handled automatically via `hy-auth.sh` during container startup. Credentials are stored in `/data/auth.json`.
 
 ### `AUTH_REFRESH_HOURS`
 
@@ -864,7 +887,9 @@ The ranges above are the RCON plugin's own. A number outside its range stops the
 **Default:** `24`  
 **Description:** How often the login is refreshed in the background while the server runs. Hytale's refresh token expires after 30 days without use, so keep this well below 720.
 
-The following variables are documented for reference but are not actively used by the current entrypoint:
+### Not used: token variables
+
+> **Note:** The variables below are **not currently used** - authentication tokens are read from `/data/auth.json`, not environment variables. They are documented for reference only.
 
 ### `SESSION_TOKEN`
 

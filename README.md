@@ -86,6 +86,7 @@ The server updates only when it restarts, and only when `VERSION=LATEST` (the de
 docker exec hytale hy-restart          # warns players, restarts in 5 minutes (stays open until then)
 docker exec -d hytale hy-restart       # same, but returns at once
 docker exec hytale hy-restart --now    # restarts immediately
+docker exec hytale hy-restart --reason "new mods" # adds the reason to each warning
 docker exec hytale hy-restart --cancel # cancels a pending restart
 ```
 

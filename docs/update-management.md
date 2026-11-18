@@ -17,8 +17,11 @@ Nothing updates behind your back: a running server is never changed. Hytale's ow
 docker exec hytale hy-restart              # warn players, restart in RESTART_WARN_MINUTES (default 5)
 docker exec hytale hy-restart --now        # restart immediately
 docker exec hytale hy-restart --minutes 10 # warn players, restart in 10 minutes
+docker exec hytale hy-restart --reason "new mods" # add the reason to each warning
 docker exec hytale hy-restart --cancel     # cancel a pending restart
 ```
+
+Without `--reason`, the reason comes from `RESTART_REASON`, if set (for example `docker exec -e RESTART_REASON="new mods" hytale hy-restart`). Automatic restarts give their own reason.
 
 - Players are warned in chat (`say`) when the countdown starts, at 1 minute and at 10 seconds. This needs RCON (on by default; it uses `RCON_PASSWORD` or the generated password). With RCON off, or only `RCON_PASSWORD_HASH`, the restart still happens, without warnings.
 - `hy-restart` waits for the countdown. Use `docker exec -d hytale hy-restart` to start it and return immediately.

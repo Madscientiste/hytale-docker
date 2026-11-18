@@ -55,7 +55,7 @@ You can give the plugin only a hash, so the plaintext is not stored in the conta
 docker compose exec hytale gen-psswd          # asks for the password, prints the hash
 ```
 
-Then set `RCON_PASSWORD_HASH=<hash>`. With a hash only, the image cannot log in itself: `rcon-cli` needs `--password`, players get no restart warnings, and the health check only checks that the server process runs.
+Then set `RCON_PASSWORD_HASH=<hash>`. A hash in `RCON_PASSWORD` works the same way. With a hash only, the image cannot log in itself: `rcon-cli` needs `--password`, players get no restart warnings, and the health check only checks that the server process runs.
 
 `gen-psswd` reads the password from the prompt or stdin (`echo "$PW" | docker compose exec -T hytale gen-psswd`). Passing it as an argument also works, but then it shows in `ps` and your shell history.
 
@@ -68,7 +68,7 @@ If you set both `RCON_PASSWORD` and `RCON_PASSWORD_HASH`, they must match. Other
 By default (`RCON_VERSION` empty) the image installs the plugin release it was tested with, and checks its sha256 checksum. A download that does not match is refused, and an installed jar that does not match is moved to `data/.disabled-plugins` and downloaded again.
 
 - `RCON_VERSION=latest`: the newest release on GitHub, not checked.
-- `RCON_VERSION=rcon-v1.1.0` (any release tag, or just `1.1.0`): that release. Only the tested release (`rcon-v1.2.0`) is checked.
+- `RCON_VERSION=rcon-v1.1.0` (a release tag, or just `1.1.0`): that release, 1.1.0 or newer. A value that starts with a digit or `v` becomes `rcon-v<version>`, so 1.0.0 (tag `v1.0.0`) cannot be chosen. Only the tested release (`rcon-v1.2.0`) is checked.
 
 Only one RCON plugin version is kept in `data/mods`; other versions are moved to `data/.disabled-plugins`. If GitHub cannot be reached with `RCON_VERSION=latest`, the installed version is kept.
 
@@ -76,12 +76,13 @@ Only one RCON plugin version is kept in `data/mods`; other versions are moved to
 
 | Variable | Default | What it does |
 |---|---|---|
-| `RCON_ENABLED` | `true` | `false` turns RCON off (no plugin, no player warnings, process-only health check) |
+| `RCON_ENABLED` | `true` | `false` turns RCON off (no plugin, no player warnings, process-only health check); an installed plugin moves to `data/.disabled-plugins` |
 | `RCON_VERSION` | empty | Plugin version (see above) |
 | `RCON_HOST` | `0.0.0.0` in compose | Listen address inside the container |
 | `RCON_PORT` | `25575` | Port |
 | `RCON_PASSWORD` | empty | Your password; empty: a random one in `data/.rcon-password` |
 | `RCON_PASSWORD_HASH` | empty | Hash only (see above); wins over `RCON_PASSWORD` for the plugin |
+| `RCON_COMMAND_TIMEOUT` | `10` | Seconds the health check and restart warnings wait for an answer; not in `docker-compose.yml` |
 
 The plugin's own file is `data/configs/com.madscientiste.rcon.json`; the image updates it on every start. All options and their allowed ranges: [env-variables.md](env-variables.md#rcon-configuration). A number outside its range stops the container with an error, because the plugin would refuse the config and RCON would stay off.
 
